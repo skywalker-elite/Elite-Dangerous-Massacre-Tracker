@@ -121,12 +121,20 @@ class JournalReader:
                 for i in [self._load_games, self._missions, self._missions_accepted, self._missions_completed, self._missions_failed, self._missions_abandoned]]
     
     def get_items(self) -> list:
+        self._last_items_count = {item_type: len(getattr(self, f'_{item_type}')) for item_type in ['load_games', 'missions', 'missions_accepted', 'missions_completed', 'missions_failed', 'missions_abandoned']}
         if self.dropout:
             items = self.items.copy()
             for i in self.droplist:
                 items[i] = type(items[i])()
             return items
         return self.items.copy()
+    
+    def get_new_items(self) -> list:
+        items = []
+        for item_type in ['load_games', 'missions', 'missions_accepted', 'missions_completed', 'missions_failed', 'missions_abandoned']:
+            items.append(getattr(self, f'_{item_type}')[self._last_items_count[item_type]:])
+        self._last_items_count = {item_type: len(getattr(self, f'_{item_type}')) for item_type in ['load_games', 'missions', 'missions_accepted', 'missions_completed', 'missions_failed', 'missions_abandoned']}
+        return items
 
 class MissionModel:
     def __init__(self, journal_path:str, dropout:bool=False):
@@ -138,7 +146,7 @@ class MissionModel:
         self.read_journals()
 
     def read_journals(self):
-        data_missions = {}
+        self.data_missions = {}
         self.journal_reader.read_journals()
         load_games, missions, missions_accepted, missions_completed, missions_failed, missions_abandoned = self.journal_reader.get_items()
 
@@ -148,17 +156,28 @@ class MissionModel:
                 cmdr_names[load_game['FID']] = load_game['Commander']
         
         for mission in missions:
-            if mission['FID'] not in data_missions.keys():
-                data_missions[mission['FID']] = {}
-            data_missions[mission['FID']]['Active'] = mission['Active']
-            data_missions[mission['FID']]['Failed'] = mission['Failed']
-            data_missions[mission['FID']]['Complete'] = mission['Complete']
+            if mission['FID'] not in self.data_missions.keys():
+                self.data_missions[mission['FID']] = {}
+            self.data_missions[mission['FID']]['Active'] = mission['Active']
+            self.data_missions[mission['FID']]['Failed'] = mission['Failed']
+            self.data_missions[mission['FID']]['Complete'] = mission['Complete']
 
         
         for mission in missions_accepted:
-            pass
-        
-        self.missions = data_missions.copy()
+            if mission['Name'].startswith('Mission_Massacre'):
+                if mission['FID'] not in self.missions.keys():
+                    self.missions[mission['FID']] = {}
+                self.missions[mission['FID']][mission['MissionID']] = {
+                    'TargetFaction': mission['TargetFaction'],
+                    'DestinationSystem': mission['DestinationSystem'],
+                    'Faction': mission['Faction'],
+                    'KillCount': mission['KillCount'],
+                    'Reward': mission['Reward'],
+                    'Wing': mission['Wing'],
+                    'Expiry': mission['Expiry'],
+                }
+
+        self.missions = self.missions.copy()
 
     def update_missions(self, now):
         missions = self.missions.copy()
@@ -176,10 +195,12 @@ class MissionModel:
         pass
 
 if __name__ == '__main__':
-    journal_reader = JournalReader(getJournalPath())
-    journal_reader.read_journals()
-    print(*[i[:10] for i in journal_reader.get_items()], sep='\n\n')
-    # model = MissionModel(getJournalPath())
+    # journal_reader = JournalReader(getJournalPath())
+    # journal_reader.read_journals()
+    # print(*[i[:10] for i in journal_reader.get_items()], sep='\n\n')
+    model = MissionModel(getJournalPath())
+    print(pd.DataFrame(model.missions['F11601975']).T)
+    print(model.data_missions)
     # now = datetime.now(timezone.utc)
     # model.update_carriers(now)
     # print(pd.DataFrame(model.get_data(now), columns=[
