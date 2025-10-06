@@ -87,7 +87,7 @@ class MissionController:
         # self.update_timer_stat_loop()
         self.view.update_table_active_journals(self.model.get_data_active_journals())
         # self._start_realtime_listener()
-        self.check_app_update()
+        # self.check_app_update()
         self.minimize_hint_sent = False
 
         threading.Thread(target=self.save_cache, daemon=True).start()
@@ -206,10 +206,16 @@ class MissionController:
         with ThreadPoolExecutor(max_workers=4) as pool:
             fut_update_missions = pool.submit(self.model.update_data_missions, now)
             fut_get_active_missions = pool.submit(self.model.get_data_active_missions, 'F11601975', now)
+            fut_get_faction_distribution = pool.submit(self.model.generate_info_distribution, 'F11601975')
+            fut_get_mission_stats = pool.submit(self.model.get_data_mission_stats, 'F11601975')
         fut_update_missions.result()
         active_missions = fut_get_active_missions.result()
+        faction_distribution = fut_get_faction_distribution.result()
+        mission_stats = fut_get_mission_stats.result()
         self.view.root.after(0, self.view.update_table_missions, active_missions)
-    
+        self.view.root.after(0, self.view.update_table_faction_distribution, faction_distribution)
+        self.view.root.after(0, self.view.update_table_mission_stats, mission_stats)
+
     # def update_tables_slow(self, now):
     #     with ThreadPoolExecutor(max_workers=4) as pool:
     #         fut_finance = pool.submit(self.model.get_data_finance)

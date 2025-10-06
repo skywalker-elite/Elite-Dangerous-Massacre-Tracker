@@ -322,10 +322,34 @@ class MissionModel:
     def get_data_active_missions(self, fid, now) -> pd.DataFrame:
         df = pd.DataFrame(self.generate_info_active_missions(fid, now)).T
         df = pd.concat([df, pd.DataFrame([['Total'] + ['']*3 +[df.iloc[:, i].astype(int).sum() for i in [4, 5]] + ['']], columns=df.columns)], axis=0, ignore_index=True)
-        print(df)
         df['Timer'] = df['Timer'].apply(lambda x: naturaltime(x, when=now) if isinstance(x, datetime) else '')
         df['Reward'] = df['Reward'].apply(lambda x: f"{x:,}" if pd.notna(x) else '')
         return df.values.tolist()
+    
+    def generate_info_distribution(self, fid):
+        missions = self.get_active_missions(fid)
+        df = pd.DataFrame(missions).T
+        if df.empty:
+            return None
+        distribution = df[['Faction', 'KillCount']].groupby('Faction').sum().reset_index()
+        distribution = distribution.sort_values(by='KillCount', ascending=True).reset_index(drop=True)
+        distribution.index += 1
+        distribution['Difference'] = distribution['KillCount'].max() - distribution['KillCount']
+        return distribution.values.tolist()
+    
+    def get_data_mission_stats(self, fid):
+        missions = self.get_active_missions(fid)
+        df = pd.DataFrame(missions).T
+        if df.empty:
+            return None
+        stats = {
+            'TotalMissions': df.shape[0],
+            'KillCount': df[['Faction', 'KillCount']].groupby('Faction').sum().max()['KillCount'],
+            'TotalKillCount': df['KillCount'].sum(),
+            'KillRatio': f"{df['KillCount'].sum() / df[['Faction', 'KillCount']].groupby('Faction').sum().max()['KillCount']:.2f}",
+            'TotalReward': f"{df['Reward'].sum():,}",
+        }
+        return list(stats.items())
 
     class ActiveJournalInfo(NamedTuple):
         fid: str
@@ -392,11 +416,8 @@ if __name__ == '__main__':
     print(pd.DataFrame(model.get_missions('F11601975')).T)
     print(pd.DataFrame(model.get_active_missions('F11601975')).T)
     print(pd.DataFrame(model.generate_info_active_missions('F11601975', datetime.now(timezone.utc))).T)
-    print(model.get_data_active_missions('F11601975', datetime.now(timezone.utc)))
-    # now = datetime.now(timezone.utc)
-    # model.update_carriers(now)
-    # print(pd.DataFrame(model.get_data(now), columns=[
-    #         'Carrier Name', 'Carrier ID', 'Fuel', 'Current System', 'Body',
-    #         'Status', 'Destination System', 'Body', 'Timer'
-    #     ]))
+    df_active_missions = pd.DataFrame(model.get_data_active_missions('F11601975', datetime.now(timezone.utc)), columns=['TargetFaction', 'DestinationSystem', 'Faction', 'Wing', 'KillCount', 'Reward', 'Timer'])
+    print(df_active_missions)
+    print(model.generate_info_distribution('F11601975'))
+    print(model.get_data_mission_stats('F11601975'))
     

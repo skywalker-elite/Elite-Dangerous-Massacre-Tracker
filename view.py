@@ -73,6 +73,11 @@ class MissionView:
 
         self.tab_controler.pack(expand=True, fill='both')
 
+        self.tab_mission.grid_rowconfigure(0, weight=1)
+        self.tab_mission.grid_rowconfigure(1, weight=1)
+        self.tab_mission.grid_columnconfigure(0, weight=1)
+        self.tab_mission.grid_columnconfigure(1, weight=1)
+
         # Initialize the tksheet.Sheet widget
         self.sheet_missions = Sheet(self.tab_mission, name='sheet_jumps')
 
@@ -81,7 +86,18 @@ class MissionView:
             'TargetFaction', 'DestinationSystem', 'Faction', 'Wing', 'KillCount', 'Reward', 'Expires'
         ])
 
+        self.sheet_missions.grid(row=0, column=0, columnspan=3, sticky='nswe')
         self.configure_sheet(self.sheet_missions)
+
+        self.sheet_faction_distribution = Sheet(self.tab_mission, name='sheet_faction_distribution')
+        self.sheet_faction_distribution.headers(['Faction', 'KillCount', 'Difference'])
+        self.sheet_faction_distribution.grid(row=1, column=0, columnspan=1, sticky='nswe')
+        self.configure_sheet(self.sheet_faction_distribution)
+
+        self.sheet_mission_stats = Sheet(self.tab_mission, name='sheet_mission_stats')
+        self.sheet_mission_stats.headers(['Stat', 'Value'])
+        self.sheet_mission_stats.grid(row=1, column=1, columnspan=1, sticky='nswe')
+        self.configure_sheet(self.sheet_mission_stats)
 
         # self.bottom_bar = ttk.Frame(self.tab_jumps)
         # self.bottom_bar.grid(row=2, column=0, columnspan=3, sticky='ew')
@@ -150,7 +166,6 @@ class MissionView:
         self.button_open_journal.pack(side='left')
 
     def configure_sheet(self, sheet:Sheet):
-        sheet.grid(row=0, column=0, columnspan=3, sticky='nswe')
         sheet.change_theme('dark', redraw=False)
         sheet.set_options(**self.sheet_colors)
         # Enable column resizing to match window resizing
@@ -163,7 +178,7 @@ class MissionView:
         size_table = font_sizes.get(font_size_table, font_sizes['normal'])
 
         # 1) resize all tksheets
-        for sheet in [self.sheet_missions, self.sheet_active_journals]:
+        for sheet in [self.sheet_missions, self.sheet_faction_distribution, self.sheet_active_journals]:
             sheet.font(('Calibri', size_table, 'normal'))
             sheet.header_font(('Calibri', size_table, 'normal'))
 
@@ -196,6 +211,12 @@ class MissionView:
     
     def update_table_missions(self, data):
         self.update_table(self.sheet_missions, data)
+
+    def update_table_faction_distribution(self, data):
+        self.update_table(self.sheet_faction_distribution, data)
+
+    def update_table_mission_stats(self, data):
+        self.update_table(self.sheet_mission_stats, data)
 
     def update_table_active_journals(self, data):
         self.update_table(self.sheet_active_journals, data)
