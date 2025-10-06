@@ -5,7 +5,7 @@ from os import listdir, path
 import re
 import json
 from datetime import datetime, timezone, timedelta
-from humanize import naturaltime
+from humanize import naturaltime, naturaldelta
 from random import random
 import inspect
 from utility import getHammerCountdown, getResourcePath, getJournalPath
@@ -322,7 +322,7 @@ class MissionModel:
     def get_data_active_missions(self, fid, now) -> pd.DataFrame:
         df = pd.DataFrame(self.generate_info_active_missions(fid, now)).T
         df = pd.concat([df, pd.DataFrame([['Total'] + ['']*3 +[df.iloc[:, i].astype(int).sum() for i in [4, 5]] + ['']], columns=df.columns)], axis=0, ignore_index=True)
-        df['Timer'] = df['Timer'].apply(lambda x: naturaltime(x, when=now) if isinstance(x, datetime) else '')
+        df['Timer'] = df['Timer'].apply(lambda x: naturaldelta(x - now) if isinstance(x, datetime) else '')
         df['Reward'] = df['Reward'].apply(lambda x: f"{x:,}" if pd.notna(x) else '')
         return df.values.tolist()
     
