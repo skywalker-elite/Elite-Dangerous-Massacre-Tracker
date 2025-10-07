@@ -52,6 +52,7 @@ class MissionController:
         self.model = model
         self.tray_icon = None
         self.view = MissionView(root)
+        self.active_fid: str | None = None
         # self.load_settings(getSettingsPath())
 
         self.view.button_open_journal.configure(command=self.button_click_open_journal)
@@ -205,9 +206,9 @@ class MissionController:
     def update_tables_fast(self, now):
         with ThreadPoolExecutor(max_workers=4) as pool:
             fut_update_missions = pool.submit(self.model.update_data_missions, now)
-            fut_get_active_missions = pool.submit(self.model.get_data_active_missions, 'F11601975', now)
-            fut_get_faction_distribution = pool.submit(self.model.generate_info_distribution, 'F11601975')
-            fut_get_mission_stats = pool.submit(self.model.get_data_mission_stats, 'F11601975')
+            fut_get_active_missions = pool.submit(self.model.get_data_active_missions, self.active_fid, now)
+            fut_get_faction_distribution = pool.submit(self.model.get_data_distribution, self.active_fid)
+            fut_get_mission_stats = pool.submit(self.model.get_data_mission_stats, self.active_fid)
             fut_get_active_journals = pool.submit(self.model.get_data_active_journals)
         fut_update_missions.result()
         active_missions, rows_to_highlight = fut_get_active_missions.result()

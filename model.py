@@ -351,30 +351,38 @@ class MissionModel:
         redirected = [i for i, mission in enumerate(missions.values()) if mission.get('Redirected', False)]
         return info, redirected
 
-    def get_data_active_missions(self, fid, now) -> tuple[list[list], list[int]]:
+    def get_data_active_missions(self, fid:str|None, now) -> tuple[list[list], list[int]]:
+        if fid is None:
+            return [], []
         missions, redirected = self.generate_info_active_missions(fid, now)
         df = pd.DataFrame(missions).T
+        if df.empty:
+            return [], []
         df['Expires'] = df['Expires'].apply(lambda x: naturaltime(x) if isinstance(x, datetime) else '')
         df['Reward'] = df['Reward'].apply(lambda x: f"{x:,}" if pd.notna(x) else '')
         df['Wing'] = df['Wing'].apply(lambda x: 'Yes' if x else 'No')
         return df.values.tolist(), redirected
     
-    def generate_info_distribution(self, fid):
+    def get_data_distribution(self, fid:str|None) -> list[list]:
+        if fid is None:
+            return []
         missions = self.get_active_missions(fid)
         df = pd.DataFrame(missions).T
         if df.empty:
-            return None
+            return []
         distribution = df[['Faction', 'KillCount']].groupby('Faction').sum().reset_index()
         distribution = distribution.sort_values(by='KillCount', ascending=True).reset_index(drop=True)
         distribution.index += 1
         distribution['Difference'] = distribution['KillCount'].max() - distribution['KillCount']
         return distribution.values.tolist()
-    
-    def get_data_mission_stats(self, fid):
+
+    def get_data_mission_stats(self, fid:str|None) -> list[list]:
+        if fid is None:
+            return []
         missions = self.get_active_missions(fid)
         df = pd.DataFrame(missions).T
         if df.empty:
-            return None
+            return []
         df_redirected = df[df['Redirected'] == True]
         stats = {
             'TotalMissions': df.shape[0],
@@ -453,7 +461,7 @@ if __name__ == '__main__':
     print(pd.DataFrame(model.get_missions('F11601975')).T)
     print(pd.DataFrame(model.get_active_missions('F11601975')).T)
     print(pd.DataFrame(model.generate_info_active_missions('F11601975', datetime.now(timezone.utc))).T)
-    print(pd.DataFrame(model.generate_info_distribution('F11601975')))
+    print(pd.DataFrame(model.get_data_distribution('F11601975')))
     print(pd.DataFrame(model.get_data_mission_stats('F11601975')))
     print(model.get_data_missions()['F11601975']['Complete'])
     
