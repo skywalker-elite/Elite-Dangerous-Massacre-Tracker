@@ -205,21 +205,24 @@ class MissionView:
         self.root.option_add("*Listbox*Font", ("Calibri", size, "normal"))
         self.root.option_add("*Menu*Font",    ("Calibri", size, "normal"))
 
-    def update_table(self, table:Sheet, data):
+    def update_table(self, table:Sheet, data, rows_to_highlight:list[int]|None=None):
         table.set_sheet_data(data, reset_col_positions=False)
+        table.dehighlight_all(redraw=False)
+        if rows_to_highlight is not None:
+            table.highlight_rows(rows_to_highlight, fg='#0a84ff', redraw=False)
         table.set_all_column_widths()
     
-    def update_table_missions(self, data):
-        self.update_table(self.sheet_missions, data)
+    def update_table_missions(self, data, rows_to_highlight:list[int]|None=None):
+        self.update_table(self.sheet_missions, data, rows_to_highlight)
 
-    def update_table_faction_distribution(self, data):
-        self.update_table(self.sheet_faction_distribution, data)
+    def update_table_faction_distribution(self, data, rows_to_highlight:list[int]|None=None):
+        self.update_table(self.sheet_faction_distribution, data, rows_to_highlight)
 
-    def update_table_mission_stats(self, data):
-        self.update_table(self.sheet_mission_stats, data)
+    def update_table_mission_stats(self, data, rows_to_highlight:list[int]|None=None):
+        self.update_table(self.sheet_mission_stats, data, rows_to_highlight)
 
-    def update_table_active_journals(self, data):
-        self.update_table(self.sheet_active_journals, data)
+    def update_table_active_journals(self, data, rows_to_highlight:list[int]|None=None):
+        self.update_table(self.sheet_active_journals, data, rows_to_highlight)
 
     def toggle_active_journals_tab(self):
         state = 'normal' if self.checkbox_show_active_journals_var.get() else 'hidden'

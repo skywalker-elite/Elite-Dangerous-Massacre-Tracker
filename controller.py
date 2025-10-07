@@ -66,7 +66,7 @@ class MissionController:
         # self.view.button_test_discord_ping.configure(command=self.button_click_test_discord_webhook_ping)
         self.view.button_clear_cache.configure(command=self.button_click_clear_cache)
         self.view.button_go_to_github.configure(command=lambda: open_new_tab(url='https://github.com/skywalker-elite/Elite-Dangerous-Carrier-Manager'))
-        self.view.checkbox_show_active_journals_var.trace_add('write', lambda *args: self.settings.set_config('UI', 'show_active_journals_tab', value=self.view.checkbox_show_active_journals_var.get()))
+        # self.view.checkbox_show_active_journals_var.trace_add('write', lambda *args: self.settings.set_config('UI', 'show_active_journals_tab', value=self.view.checkbox_show_active_journals_var.get()))
         # self.view.checkbox_minimize_to_tray_var.trace_add('write', lambda *args: self.settings.set_config('UI', 'minimize_to_tray', value=self.view.checkbox_minimize_to_tray_var.get()))
         # self.view.checkbox_minimize_to_tray.configure(command=lambda: self.setup_tray_icon())
 
@@ -208,13 +208,16 @@ class MissionController:
             fut_get_active_missions = pool.submit(self.model.get_data_active_missions, 'F11601975', now)
             fut_get_faction_distribution = pool.submit(self.model.generate_info_distribution, 'F11601975')
             fut_get_mission_stats = pool.submit(self.model.get_data_mission_stats, 'F11601975')
+            fut_get_active_journals = pool.submit(self.model.get_data_active_journals)
         fut_update_missions.result()
-        active_missions = fut_get_active_missions.result()
+        active_missions, rows_to_highlight = fut_get_active_missions.result()
         faction_distribution = fut_get_faction_distribution.result()
         mission_stats = fut_get_mission_stats.result()
-        self.view.root.after(0, self.view.update_table_missions, active_missions)
+        active_journals = fut_get_active_journals.result()
+        self.view.root.after(0, self.view.update_table_missions, active_missions, rows_to_highlight)
         self.view.root.after(0, self.view.update_table_faction_distribution, faction_distribution)
         self.view.root.after(0, self.view.update_table_mission_stats, mission_stats)
+        self.view.root.after(0, self.view.update_table_active_journals, active_journals)
 
     # def update_tables_slow(self, now):
     #     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -426,7 +429,7 @@ class MissionController:
 
     def _reload(self):
         self.model = MissionModel(journal_paths=self.model.journal_paths, journal_reader=None, dropout=self.model.dropout, droplist=self.model.droplist)
-        self.model.register_status_change_callback(self.status_change)
+        # self.model.register_status_change_callback(self.status_change)
         self.model.read_journals()
 
     # def button_click_login(self):
