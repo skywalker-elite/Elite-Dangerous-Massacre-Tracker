@@ -354,7 +354,6 @@ class MissionModel:
     def get_data_active_missions(self, fid, now) -> tuple[list[list], list[int]]:
         missions, redirected = self.generate_info_active_missions(fid, now)
         df = pd.DataFrame(missions).T
-        df = pd.concat([df, pd.DataFrame([['Total'] + ['']*3 +[df.iloc[:, i].astype(int).sum() for i in [4, 5]] + ['']], columns=df.columns)], axis=0, ignore_index=True)
         df['Expires'] = df['Expires'].apply(lambda x: naturaltime(x) if isinstance(x, datetime) else '')
         df['Reward'] = df['Reward'].apply(lambda x: f"{x:,}" if pd.notna(x) else '')
         df['Wing'] = df['Wing'].apply(lambda x: 'Yes' if x else 'No')
@@ -376,12 +375,16 @@ class MissionModel:
         df = pd.DataFrame(missions).T
         if df.empty:
             return None
+        df_redirected = df[df['Redirected'] == True]
         stats = {
             'TotalMissions': df.shape[0],
+            'ActiveMissions': df.shape[0] - df_redirected.shape[0],
             'KillCount': df[['Faction', 'KillCount']].groupby('Faction').sum().max()['KillCount'],
+            'KillRemaining': df[['Faction', 'KillCount']].groupby('Faction').sum().max()['KillCount'] - df_redirected[['Faction', 'KillCount']].groupby('Faction').sum().max()['KillCount'],
             'TotalKillCount': df['KillCount'].sum(),
             'KillRatio': f"{df['KillCount'].sum() / df[['Faction', 'KillCount']].groupby('Faction').sum().max()['KillCount']:.2f}",
             'TotalReward': f"{df['Reward'].sum():,}",
+            'CurrentReward': f"{df_redirected['Reward'].sum():,}",
         }
         return list(stats.items())
 
