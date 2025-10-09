@@ -52,9 +52,10 @@ class MissionController:
         self.model = model
         self.tray_icon = None
         self.view = MissionView(root)
-        self.active_fid: str | None = None
+        self.active_fid: str | None = 'F11601975'
         # self.load_settings(getSettingsPath())
 
+        self.view.dropdown_cmdr_var.trace_add('write', lambda *args: setattr(self, 'active_fid', self.model.get_cmdr_fid(self.view.dropdown_cmdr_var.get())))
         self.view.button_open_journal.configure(command=self.button_click_open_journal)
         self.view.button_check_updates.configure(command=lambda: self.check_app_update(notify_is_latest=True))
         # self.view.button_reload_settings.configure(command=self.button_click_reload_settings)
@@ -73,6 +74,8 @@ class MissionController:
 
         # initial load
         self.update_journals()
+        self.view.dropdown_cmdr['values'] = self.model.get_all_cmdr_names()
+        self.view.dropdown_cmdr.current(0)
 
         self._observer = Observer()
         handler = JournalEventHandler(self)

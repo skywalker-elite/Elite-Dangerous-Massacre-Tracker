@@ -103,9 +103,13 @@ class MissionView:
         self.sheet_mission_stats.grid(row=1, column=1, columnspan=1, sticky='nswe')
         self.configure_sheet(self.sheet_mission_stats)
 
-        # self.bottom_bar = ttk.Frame(self.tab_jumps)
-        # self.bottom_bar.grid(row=2, column=0, columnspan=3, sticky='ew')
-        # self.tab_jumps.grid_rowconfigure(1, weight=0)
+        self.bottom_bar = ttk.Frame(self.tab_mission)
+        self.bottom_bar.grid(row=2, column=0, columnspan=3, sticky='ew')
+        self.tab_mission.grid_rowconfigure(2, weight=0)
+
+        self.dropdown_cmdr_var = tk.StringVar()
+        self.dropdown_cmdr = ttk.Combobox(self.bottom_bar, textvariable=self.dropdown_cmdr_var, state='readonly')
+        self.dropdown_cmdr.pack(side='right', padx=5, pady=5)
         # # Buttons
         # # Post trade
         # self.button_post_trade = ttk.Button(self.bottom_bar, text='Post Trade')
@@ -156,9 +160,10 @@ class MissionView:
 
         # Active Journals tab
         self.sheet_active_journals = Sheet(self.tab_active_journals, name='sheet_active_journals')
+        self.sheet_active_journals.grid(row=0, column=0, columnspan=3, sticky='nswe')
 
         # Set column headers
-        self.sheet_active_journals.headers(['FID', 'CMDR Name', 'Carrier Name', 'Journal File'])
+        self.sheet_active_journals.headers(['FID', 'CMDR Name', 'Journal File'])
         
         self.configure_sheet(self.sheet_active_journals)
 
@@ -317,5 +322,10 @@ if __name__ == '__main__':
     root.geometry(WINDOW_SIZE)
     apply_theme_to_titlebar(root)
     view = MissionView(root)
-    view.update_table_missions([['Anana Brotherhood', 'Anana', 'Workers of Dimocorna Union', True, 81, '38,995,904', '6 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', True, 63, '30,402,636', '6 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', True, 81, '39,031,136', '6 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', True, 63, '30,498,554', '6 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', True, 64, '30,745,880', '6 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', True, 81, '38,996,552', '6 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', True, 56, '27,075,492', '6 days from now'], ['Anana Brotherhood', 'Anana', 'Puneith Organisation', True, 45, '21,718,472', '6 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', True, 45, '21,617,422', '6 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', True, 54, '26,162,298', '6 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', True, 45, '21,762,156', '6 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', True, 54, '26,148,358', '6 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', True, 45, '21,717,464', '6 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', True, 64, '30,908,998', '6 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', True, 72, '34,741,692', '6 days from now'], ['Anana Brotherhood', 'Anana', 'Puneith Values Party', True, 54, '26,147,954', '6 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', True, 48, '23,129,086', '6 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', True, 45, '21,688,192', '6 days from now'], ['Anana Brotherhood', 'Anana', 'Puneith Organisation', True, 81, '39,165,656', '6 days from now'], ['Anana Brotherhood', 'Anana', 'Workers of Dimocorna Union', True, 72, '34,579,660', '6 days from now'], ['Total', '', '', '', 1213, '585,233,562', '']])
+    view.update_table_missions([['Anana Brotherhood', 'Anana', 'Workers of Dimocorna Union', 'Yes', 81, '38,995,904', '5 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', 'Yes', 63, '30,402,636', '5 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', 'Yes', 81, '39,031,136', '5 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', 'Yes', 63, '30,498,554', '5 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', 'Yes', 64, '30,745,880', '5 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', 'Yes', 81, '38,996,552', '5 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', 'Yes', 56, '27,075,492', '5 days from now'], ['Anana Brotherhood', 'Anana', 'Puneith Organisation', 'Yes', 45, '21,718,472', '5 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', 'Yes', 45, '21,617,422', '5 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', 'Yes', 54, '26,162,298', '5 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', 'Yes', 45, '21,762,156', '5 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', 'Yes', 54, '26,148,358', '5 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', 'Yes', 45, '21,717,464', '5 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', 'Yes', 64, '30,908,998', '5 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', 'Yes', 72, '34,741,692', '5 days from now'], ['Anana Brotherhood', 'Anana', 'Puneith Values Party', 'Yes', 54, '26,147,954', '5 days from now'], ['Anana Brotherhood', 'Anana', 'Crimson Armada', 'Yes', 48, '23,129,086', '5 days from now'], ['Anana Brotherhood', 'Anana', 'HR 7169 Union Party', 'Yes', 45, '21,688,192', '5 days from now'], ['Anana Brotherhood', 'Anana', 'Puneith Organisation', 'Yes', 81, '39,165,656', '5 days from now'], ['Anana Brotherhood', 'Anana', 'Workers of Dimocorna Union', 'Yes', 72, '34,579,660', '5 days from now']], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
+    view.update_table_faction_distribution([['Puneith Values Party', 54, 424], ['Puneith Organisation', 126, 352], ['Workers of Dimocorna Union', 153, 325], ['Crimson Armada', 402, 76], ['HR 7169 Union Party', 478, 0]])
+    view.update_table_mission_stats([('TotalMissions', 20), ('ActiveMissions', 0), ('KillCount', 478), ('KillRemaining', 0), ('TotalKillCount', 1213), ('KillRatio', '2.54'), ('TotalReward', '585,233,562'), ('CurrentReward', '585,233,562')])
+    view.update_table_active_journals([['F11601975', 'CmdrTest', 'C:\\Path\\To\\Journal.20240615T123456.01.log'], ['F11601976', 'CmdrExample', 'C:\\Path\\To\\Journal.20240615T123457.01.log']])
+    view.dropdown_cmdr['values'] = ['Skywalkerctu', 'SKYWALKER THERESA', 'SKYWALKER SAGARMATHA', 'Skywalker Behemoth', 'SKYWALKERKUNIS', 'SKYWALKER MCDOWELL', 'SKYWALKER SOJOURNER', 'SKYWALKER TOULOUSE', 'SKYWALKER MONTENEGRO', 'SKYWALKER TRIPOLI']
+    view.dropdown_cmdr.bind("<<ComboboxSelected>>", lambda e: view.sheet_missions.focus_set())
     root.mainloop()
