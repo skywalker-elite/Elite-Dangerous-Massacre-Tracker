@@ -56,10 +56,12 @@ class MissionView:
 
         self.tab_controler = ttk.Notebook(root)
         self.tab_mission = ttk.Frame(self.tab_controler)
+        self.tab_stats = ttk.Frame(self.tab_controler)
         self.tab_options = ScrollableFrame(self.tab_controler)
         self.tab_active_journals = ttk.Frame(self.tab_controler)
 
         self.tab_controler.add(self.tab_mission, text='Missions')
+        self.tab_controler.add(self.tab_stats, text='Statistics')
         self.tab_controler.add(self.tab_active_journals, text='Active Journals', state='hidden')
         self.tab_controler.add(self.tab_options, text='Options')
 
@@ -68,44 +70,45 @@ class MissionView:
             tab.rowconfigure(0, pad=1, weight=1)
             tab.columnconfigure(0, pad=1, weight=1)
 
-        for tab in [self.tab_mission, self.tab_active_journals, self.tab_options]:
+        for tab in [self.tab_mission, self.tab_stats, self.tab_active_journals, self.tab_options]:
             configure_tab_grid(tab)
 
         self.tab_controler.pack(expand=True, fill='both')
 
-        self.tab_mission.grid_rowconfigure(0, weight=1)
-        self.tab_mission.grid_rowconfigure(1, weight=1)
-        self.tab_mission.grid_columnconfigure(0, weight=1)
-        self.tab_mission.grid_columnconfigure(1, weight=1)
-
         # Initialize the tksheet.Sheet widget
-        self.sheet_missions = Sheet(self.tab_mission, name='sheet_jumps')
+        self.sheet_missions = Sheet(self.tab_mission, name='sheet_missions')
 
         # Set column headers
         self.sheet_missions.headers([
-            'TargetFaction', 'DestinationSystem', 'Faction', 'Wing', 'KillCount', 'Reward', 'Expires'
+            'TargetFaction', 'DestinationSystem', 'System', 'Station', 'Faction', 'Wing', 'KillCount', 'Reward', 'Expires'
         ])
 
         self.sheet_missions.grid(row=0, column=0, columnspan=3, sticky='nswe')
         self.configure_sheet(self.sheet_missions)
         self.sheet_missions['D:F'].align('right', redraw=False)
 
-        self.sheet_faction_distribution = Sheet(self.tab_mission, name='sheet_faction_distribution')
+        self.sheet_faction_distribution = Sheet(self.tab_stats, name='sheet_faction_distribution', empty_horizontal=0, empty_vertical=0)
         self.sheet_faction_distribution.headers(['Faction', 'KillCount', 'Difference'])
-        self.sheet_faction_distribution.grid(row=1, column=0, columnspan=1, sticky='nswe')
+        self.sheet_faction_distribution.hide('top_left')
+        self.sheet_faction_distribution.hide('row_index')
+        # self.sheet_faction_distribution.grid(row=0, column=0, columnspan=1, sticky='nswe')
+        self.sheet_faction_distribution.pack(side='left', fill='both', padx=0, pady=5)
         self.configure_sheet(self.sheet_faction_distribution)
 
-        self.sheet_mission_stats = Sheet(self.tab_mission, name='sheet_mission_stats')
+        self.separator_stats = ttk.Separator(self.tab_stats, orient='vertical')
+        self.separator_stats.pack(side='left', fill='y', padx=5, pady=5)
+
+        self.sheet_mission_stats = Sheet(self.tab_stats, name='sheet_mission_stats', empty_horizontal=0, empty_vertical=0)
         # self.sheet_mission_stats.headers(['Stat', 'Value'])
         self.sheet_mission_stats.hide('header')
         self.sheet_mission_stats.hide('top_left')
         self.sheet_mission_stats.hide('row_index')
-        self.sheet_mission_stats.grid(row=1, column=1, columnspan=1, sticky='nswe')
+        # self.sheet_mission_stats.grid(row=0, column=1, columnspan=1, sticky='nswe')
+        self.sheet_mission_stats.pack(side='left', fill='both', padx=0, pady=5)
         self.configure_sheet(self.sheet_mission_stats)
 
-        self.bottom_bar = ttk.Frame(self.tab_mission)
-        self.bottom_bar.grid(row=2, column=0, columnspan=3, sticky='ew')
-        self.tab_mission.grid_rowconfigure(2, weight=0)
+        self.bottom_bar = ttk.Frame(self.tab_controler)
+        self.bottom_bar.pack(side='bottom', fill='x')
 
         self.dropdown_cmdr_var = tk.StringVar()
         self.dropdown_cmdr = ttk.Combobox(self.bottom_bar, textvariable=self.dropdown_cmdr_var, state='readonly')

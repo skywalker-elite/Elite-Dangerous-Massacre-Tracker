@@ -31,7 +31,9 @@ class JournalReader:
         self._missions_completed = []
         self._missions_failed = []
         self._missions_abandoned = []
-        self.tracked_items = ["load_games", "missions", "missions_accepted", "missions_redirected", "missions_completed", "missions_failed", "missions_abandoned"]
+        self._docked = []
+        self._undocked = []
+        self.tracked_items = ["load_games", "missions", "missions_accepted", "missions_redirected", "missions_completed", "missions_failed", "missions_abandoned", "docked", "undocked"]
         self._last_items_count = {item_type: len(getattr(self, f'_{item_type}')) for item_type in self.tracked_items}
         self._last_items_count_pending = {item_type: len(getattr(self, f'_{item_type}')) for item_type in self.tracked_items}
         self.items = []
@@ -138,6 +140,12 @@ class JournalReader:
             if item['event'] == 'MissionAbandoned':
                 item['FID'] = fid
                 self._missions_abandoned.append(item)
+            if item['event'] == 'Docked':
+                item['FID'] = fid
+                self._docked.append(item)
+            if item['event'] == 'Undocked':
+                item['FID'] = fid
+                self._undocked.append(item)
                 
         is_active = len(items) == 0 or items[-1]['event'] != 'Shutdown'
         return fid, is_active
@@ -187,6 +195,7 @@ class MissionModel:
         self.data_missions = {}
         self.missions_updated = {}
         self.cmdr_names = {}
+        self.cmdr_locations = {}
         self.missions = {}
         self.missions_accepted = {}
         self.missions_completed = {}
@@ -196,13 +205,15 @@ class MissionModel:
         self.read_journals()
 
     def read_journals(self):
-        self.data_missions = {}
+        # self.data_missions = {}
         self.journal_reader.read_journals()
-        # first_read = self.data_missions == {}
-        load_games, missions, missions_accepted, missions_redirected, missions_completed, missions_failed, missions_abandoned = self.journal_reader.get_items() # if first_read else self.journal_reader.get_new_items()
+        first_read = self.data_missions == {}
+        load_games, missions, missions_accepted, missions_redirected, missions_completed, missions_failed, missions_abandoned, docked, undocked = self.journal_reader.get_items() if first_read else self.journal_reader.get_new_items()
 
         self.process_load_games(load_games)
-        
+
+        self.process_docking(docked, undocked)
+
         self.process_missions(missions)
         
         self.process_missions_accepted(missions_accepted)
@@ -221,6 +232,51 @@ class MissionModel:
         for load_game in load_games:
             if not first_read or load_game['FID'] not in self.cmdr_names.keys():
                 self.cmdr_names[load_game['FID']] = load_game['Commander']
+
+    def process_docking(self, docked, undocked):
+        df_docks = pd.DataFrame(docked + undocked, columns=['timestamp', 'event', 'StationName', 'StarSystem', 'MarketID', 'FID'])
+        df_docks['timestamp'] = df_docks['timestamp'].apply(lambda x: datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc))
+        df_docks = df_docks.sort_values(by='timestamp', ascending=False).reset_index(drop=True)
+        if __name__ == '__main__':
+            print('Docking/Undocking events:')
+            print(df_docks)
+        for fid in df_docks['FID'].unique():
+            df_fid = df_docks[df_docks['FID'] == fid].copy()
+            if df_fid.empty:
+                if fid not in self.cmdr_locations.keys():
+                    self.cmdr_locations[fid] = pd.DataFrame(columns=['StarSystem', 'StationName', 'MarketID', 'DockedAt', 'UndockedAt'])
+            else:
+                if __name__ == '__main__':
+                    print(f'Latest docking/undocking events for {self.cmdr_names[fid]} ({fid}):')
+                    print(df_fid)
+
+                itinerary = []
+                for i in range(df_fid.shape[0]):
+                    event = df_fid.iloc[i]
+                    if event['event'] == 'Docked':
+                        if i == 0 or itinerary[-1]['MarketID'] != event['MarketID']:
+                            itinerary.append({'StarSystem': event['StarSystem'], 'StationName': event['StationName'], 'MarketID': event['MarketID'], 'DockedAt': event['timestamp'], 'UndockedAt': None})
+                        else:
+                            itinerary[-1]['DockedAt'] = event['timestamp']
+                            itinerary[-1]['StarSystem'] = event['StarSystem']
+                    else:
+                        if i == 0 or itinerary[-1]['MarketID'] != event['MarketID']:
+                            itinerary.append({'StarSystem': None, 'StationName': event['StationName'], 'MarketID': event['MarketID'], 'DockedAt': None, 'UndockedAt': event['timestamp']})
+                        else:
+                            itinerary[-1]['UndockedAt'] = event['timestamp']
+                df_itinerary = pd.DataFrame(itinerary)
+                if self.cmdr_locations.get(fid, None) is not None:
+                    df_old = self.cmdr_locations[fid].copy()
+                    if df_itinerary.iloc[-1]['MarketID'] == df_old.iloc[0]['MarketID']:
+                        if df_itinerary.iloc[-1]['DockedAt'] is None:
+                            df_itinerary.iloc[-1]['DockedAt'] = df_old.iloc[0]['DockedAt']
+                        if df_itinerary.iloc[-1]['UndockedAt'] is None:
+                            df_itinerary.iloc[-1]['UndockedAt'] = df_old.iloc[0]['UndockedAt']
+                    df_itinerary = pd.concat([df_itinerary, df_old[1:]]).reset_index(drop=True)
+                if __name__ == '__main__':
+                    print(f'Itinerary for {self.cmdr_names[fid]} ({fid}):')
+                    print(df_itinerary)
+                self.cmdr_locations[fid] = df_itinerary.copy()                
 
     def initialize_mission_data(self, fid: str):
         if fid not in self.data_missions.keys():
@@ -251,9 +307,12 @@ class MissionModel:
         for mission in missions_accepted:
             if mission['Name'].startswith('Mission_Massacre'):
                 self.initialize_mission_data(mission['FID'])
+                system, station = self.get_cmdr_location(mission['FID'], datetime.strptime(mission['timestamp'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc))
                 self.data_missions[mission['FID']]['Missions'][mission['MissionID']] = {
                     'TargetFaction': mission['TargetFaction'],
                     'DestinationSystem': mission['DestinationSystem'],
+                    'System': system,
+                    'Station': station,
                     'Faction': mission['Faction'],
                     'KillCount': mission['KillCount'],
                     'Reward': mission['Reward'],
@@ -358,6 +417,15 @@ class MissionModel:
     def get_all_fids(self) -> list[str]:
         return list(self.cmdr_names.keys())
     
+    def get_cmdr_location(self, fid:str, time:datetime) -> tuple[str|None, str|None]:
+        if fid not in self.cmdr_locations.keys():
+            return None, None
+        df = self.cmdr_locations[fid]
+        df = df[(df['DockedAt'].notna()) & (df['DockedAt'] <= time) & ((df['UndockedAt'].isna()) | (df['UndockedAt'] > time))]
+        if df.empty:
+            return None, None
+        return df.iloc[0]['StarSystem'], df.iloc[0]['StationName']
+
     def get_active_missions(self, fid):
         missions = {}
         if fid in self.get_data_missions().keys():
@@ -374,6 +442,8 @@ class MissionModel:
             info[missionID] = {
                 'TargetFaction': mission.get('TargetFaction', None),
                 'DestinationSystem': mission.get('DestinationSystem', None),
+                'System': mission.get('System', None),
+                'Station': mission.get('Station', None),
                 'Faction': mission.get('Faction', None),
                 'Wing': mission.get('Wing', None),
                 'KillCount': mission.get('KillCount', None),
@@ -430,6 +500,7 @@ class MissionModel:
             'KillRatio': f"{total_kill_count / kill_count:.2f}",
             'TotalReward': f"{total_reward:,}",
             'CurrentReward': f"{current_reward:,}",
+            'AverageReward': f"{total_reward / df.shape[0]:,.0f}",
         }
         return list(stats.items())
 
@@ -497,11 +568,15 @@ if __name__ == '__main__':
     print(*list(model.get_missions('F11601975').values())[:10], sep='\n')
     print(pd.DataFrame(model.get_missions('F11601975')).T)
     print(pd.DataFrame(model.get_active_missions('F11601975')).T)
-    print(model.get_data_active_missions('F11601975', datetime.now(timezone.utc)))
+    print('---'*10)
+    print(pd.DataFrame(model.get_data_active_missions('F11601975', datetime.now(timezone.utc))[0]))
+    print('---'*10)
     print(model.get_data_distribution('F11601975'))
     print(model.get_data_mission_stats('F11601975'))
     print(model.get_all_cmdr_names())
     print(model.get_all_fids())
     print(model.get_cmdr_name('F11601975'))
+    print(model.get_cmdr_location('F11601975', datetime(2025, 10, 9, 21, 20, 42, tzinfo=timezone.utc)))
+    print(model.get_cmdr_location('F11601975', datetime.now(timezone.utc)))
     # print(model.get_data_missions()['F11601975']['Complete'])
     
