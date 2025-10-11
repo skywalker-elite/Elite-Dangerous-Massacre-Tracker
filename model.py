@@ -426,6 +426,14 @@ class MissionModel:
             return None, None
         return df.iloc[0]['StarSystem'], df.iloc[0]['StationName']
 
+    def get_cmdr_current_docked_location(self, fid:str) -> tuple[str|None, str|None]:
+        if fid not in self.cmdr_locations.keys():
+            return None, None
+        df = self.cmdr_locations[fid].iloc[0]
+        if pd.isna(df['DockedAt']) or pd.notna(df['UndockedAt']):
+            return None, None
+        return df['StarSystem'], df['StationName']
+
     def get_active_missions(self, fid):
         missions = {}
         if fid in self.get_data_missions().keys():
@@ -451,19 +459,24 @@ class MissionModel:
                 'Expires': mission.get('Expiry', None),
             }
         redirected = [i for i, mission in enumerate(missions.values()) if mission.get('Redirected', False)]
-        return info, redirected
+        docked_system, docked_station = self.get_cmdr_current_docked_location(fid)
+        if docked_system is None or docked_station is None:
+            return info, redirected, []
+        at_location = [i for i, mission in enumerate(missions.values()) if mission['System'] == docked_system and mission['Station'] == docked_station]
+        turn_in_here = [i for i in redirected if i in at_location]
+        return info, redirected, turn_in_here
 
-    def get_data_active_missions(self, fid:str|None, now) -> tuple[list[list], list[int]]:
+    def get_data_active_missions(self, fid:str|None, now) -> tuple[list[list], list[int], list[int]]:
         if fid is None:
-            return [['No active missions']], []
-        missions, redirected = self.generate_info_active_missions(fid, now)
+            return [['No active missions']], [], []
+        missions, redirected, turn_in_here = self.generate_info_active_missions(fid, now)
         df = pd.DataFrame(missions).T
         if df.empty:
-            return [['No active missions']], []
+            return [['No active missions']], [], []
         df['Expires'] = df['Expires'].apply(lambda x: naturaltime(x) if isinstance(x, datetime) else '')
         df['Reward'] = df['Reward'].apply(lambda x: f"{x:,}" if pd.notna(x) else '')
         df['Wing'] = df['Wing'].apply(lambda x: 'Yes' if x else 'No')
-        return df.values.tolist(), redirected
+        return df[['TargetFaction', 'DestinationSystem', 'System', 'Station', 'Faction', 'Wing', 'KillCount', 'Reward', 'Expires']].values.tolist(), redirected, turn_in_here
     
     def get_data_distribution(self, fid:str|None) -> list[list]:
         if fid is None:

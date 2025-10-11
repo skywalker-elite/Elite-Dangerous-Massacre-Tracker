@@ -217,15 +217,21 @@ class MissionView:
         self.root.option_add("*Listbox*Font", ("Calibri", size, "normal"))
         self.root.option_add("*Menu*Font",    ("Calibri", size, "normal"))
 
-    def update_table(self, table:Sheet, data, rows_to_highlight:list[int]|None=None):
+    def update_table(self, table:Sheet, data, highlight_rows:dict[str, int]|None=None):
         table.set_sheet_data(data, reset_col_positions=False)
         table.dehighlight_all(redraw=False)
-        if rows_to_highlight is not None:
-            table.highlight_rows(rows_to_highlight, fg='#0a84ff', redraw=False)
+        if highlight_rows is not None:
+            for color, rows in highlight_rows.items():
+                table.highlight_rows(rows, fg=color, redraw=False)
         table.set_all_column_widths()
     
-    def update_table_missions(self, data, rows_to_highlight:list[int]|None=None):
-        self.update_table(self.sheet_missions, data, rows_to_highlight)
+    def update_table_missions(self, data, rows_to_highlight:list[int]|None=None, rows_turn_in:list[int]|None=None):
+        highlight_rows = {}
+        if rows_to_highlight:
+            highlight_rows['#0a84ff'] = rows_to_highlight
+        if rows_turn_in:
+            highlight_rows["#0fff6f"] = rows_turn_in
+        self.update_table(self.sheet_missions, data, highlight_rows)
 
     def update_table_faction_distribution(self, data, rows_to_highlight:list[int]|None=None):
         self.update_table(self.sheet_faction_distribution, data, rows_to_highlight)
