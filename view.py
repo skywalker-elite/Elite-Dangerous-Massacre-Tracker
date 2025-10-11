@@ -133,18 +133,18 @@ class MissionView:
         # self.button_post_departure.pack(side='left')
 
         # Options tab
-        self.labelframe_EDCM = ttk.Labelframe(self.tab_options.scrollable_frame, text='EDCM')
-        self.labelframe_EDCM.grid(row=0, column=0, padx=10, pady=10, sticky='w')
-        self.button_check_updates = ttk.Button(self.labelframe_EDCM, text='Check for Updates')
+        self.labelframe_EDMT = ttk.Labelframe(self.tab_options.scrollable_frame, text='EDMT')
+        self.labelframe_EDMT.grid(row=0, column=0, padx=10, pady=10, sticky='w')
+        self.button_check_updates = ttk.Button(self.labelframe_EDMT, text='Check for Updates')
         self.button_check_updates.pack(side='left', padx=10, pady=10, anchor='w')
-        self.button_go_to_github = ttk.Button(self.labelframe_EDCM, text='Go to GitHub Repo')
+        self.button_go_to_github = ttk.Button(self.labelframe_EDMT, text='Go to GitHub Repo')
         self.button_go_to_github.pack(side='left', padx=10, pady=10, anchor='w')
-        self.button_clear_cache = ttk.Button(self.labelframe_EDCM, text='Clear Cache and Reload')
+        self.button_clear_cache = ttk.Button(self.labelframe_EDMT, text='Clear Cache and Reload')
         self.button_clear_cache.pack(side='left', padx=10, pady=10, anchor='w')
         self.checkbox_show_active_journals_var = tk.BooleanVar()
         self.checkbox_show_active_journals_var.trace_add('write', lambda *args: self.toggle_active_journals_tab())
         self.checkbox_show_active_journals = ttk.Checkbutton(
-            self.labelframe_EDCM,
+            self.labelframe_EDMT,
             text='Show Active Journals Tab',
             variable=self.checkbox_show_active_journals_var,
         )

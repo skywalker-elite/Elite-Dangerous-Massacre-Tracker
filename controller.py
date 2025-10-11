@@ -416,7 +416,7 @@ class MissionController:
             except Exception as e:
                 self.view.show_message_box_warning('Error', f'Error while clearing cache\n{traceback.format_exc()}')
             else:
-                self.view.show_message_box_info('Success!', 'Cache cleared, EDCM will reload all journals now')
+                self.view.show_message_box_info('Success!', 'Cache cleared, EDMT will reload all journals now')
                 self.reload()
         else:
             self.view.show_message_box_info('Info', 'No cache file found')

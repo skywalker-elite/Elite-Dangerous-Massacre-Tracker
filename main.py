@@ -63,7 +63,7 @@ def main():
     sv_ttk.use_dark_theme()
     root.title(APP_NAME)
     root.geometry(WINDOW_SIZE)
-    photo = Image.open(getResourcePath(os.path.join('images','EDCM.png')))
+    photo = Image.open(getResourcePath(os.path.join('images','EDMT.png')))
     root.iconphoto(True, *[ImageTk.PhotoImage(photo.resize((resolution, resolution))) for resolution in (16, 32, 48, 64, 128, 256, 512, 1024) if resolution < photo.width and resolution < photo.height])
     root.update()
 
