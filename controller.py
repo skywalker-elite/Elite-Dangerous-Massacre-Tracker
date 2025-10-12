@@ -4,7 +4,6 @@ import sys
 import threading
 import time
 from typing import Callable, TYPE_CHECKING
-from realtime import PostgresChangesPayload, AsyncRealtimeClient, RealtimeSubscribeStates
 import pyperclip
 import re
 from watchdog.observers import Observer
