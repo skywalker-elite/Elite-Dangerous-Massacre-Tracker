@@ -20,11 +20,9 @@ import pickle
 import asyncio
 import pandas as pd
 from string import Template
-from playsound3 import playsound
 from tkinter import Tk
-from pystray import Icon, Menu, MenuItem
+# from pystray import Icon, Menu, MenuItem
 from PIL import Image
-from supabase import FunctionsHttpError
 from concurrent.futures import ThreadPoolExecutor
 # from settings import Settings, SettingsValidationError
 from model import MissionModel
