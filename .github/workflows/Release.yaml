@@ -70,7 +70,7 @@ jobs:
         id: create_executable
         uses: skywalkerctu/pyinstaller-action@v1.3.0
         with:
-          python_ver: '3.12.7'
+          python_ver: '3.13.7'
           cache: 'true'
           spec: 'build.spec'
           requirements: 'requirements.txt'
@@ -186,7 +186,7 @@ jobs:
         id: create_executable
         uses: skywalkerctu/pyinstaller-action@v1.3.0
         with:
-          python_ver: '3.12.7'
+          python_ver: '3.13.7'
           cache: 'true'
           spec: 'build.spec'
           requirements: 'requirements.txt'
