@@ -7,3 +7,4 @@ numpy==2.0.0
 humanize==4.12.2
 watchdog==6.0.0
 Pillow==11.3.0
+requests==2.32.4
