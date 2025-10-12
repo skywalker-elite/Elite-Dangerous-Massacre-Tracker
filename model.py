@@ -503,16 +503,21 @@ class MissionModel:
         kill_count = df[['Faction', 'KillCount']].groupby('Faction').sum().max()['KillCount']
         total_kill_count = df['KillCount'].sum()
         total_reward = df['Reward'].sum()
+        sharable_reward = df[df['Wing'] == True]['Reward'].sum()
         current_reward = df_redirected['Reward'].sum() if not df_redirected.empty else 0
+        current_sharable_reward = df_redirected[df_redirected['Wing'] == True]['Reward'].sum() if not df_redirected.empty else 0
         stats = {
             'TotalMissions': df.shape[0],
+            'WingMissions': df[df['Wing'] == True].shape[0],
             'ActiveMissions': df.shape[0] - df_redirected.shape[0],
             'KillCount': kill_count,
             'KillRemaining': kill_count - completed_kills,
             'TotalKillCount': total_kill_count,
             'KillRatio': f"{total_kill_count / kill_count:.2f}",
             'TotalReward': f"{total_reward:,}",
+            'TotalSharableReward': f"{sharable_reward:,}",
             'CurrentReward': f"{current_reward:,}",
+            'CurrentSharableReward': f"{current_sharable_reward:,}",
             'AverageReward': f"{total_reward / df.shape[0]:,.0f}",
         }
         return list(stats.items())
