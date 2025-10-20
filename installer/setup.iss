@@ -16,6 +16,7 @@ WizardStyle=modern
 WizardImageFile="{#InputDir}\..\..\installer\Inno_wizard_image.png"
 SetupIconFile="{#InputDir}\_internal\images\EDMT.ico"
 DefaultDirName={autopf}\EDMT
+DefaultGroupName=Skywalker-Elite
 OutputDir={#OutputDirA}
 OutputBaseFilename=EDMT-Setup-{#AppVersion}
 Compression=lzma
