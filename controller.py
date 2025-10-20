@@ -44,7 +44,7 @@ class JournalEventHandler(FileSystemEventHandler):
     on_created = on_modified
 
 class MissionController:
-    def __init__(self, root:Tk, model:MissionModel):
+    def __init__(self, root: Tk, model: MissionModel):
         self.root = root
         self.model = model
         self.tray_icon = None
@@ -53,6 +53,7 @@ class MissionController:
         # self.load_settings(getSettingsPath())
 
         self.view.dropdown_cmdr_var.trace_add('write', lambda *args: setattr(self, 'active_fid', self.model.get_cmdr_fid(self.view.dropdown_cmdr_var.get())))
+        self.view.dropdown_cmdr_var.trace_add('write', lambda *args: self.redraw_slow())
         self.view.button_open_journal.configure(command=self.button_click_open_journal)
         self.view.button_check_updates.configure(command=lambda: self.check_app_update(notify_is_latest=True))
         # self.view.button_reload_settings.configure(command=self.button_click_reload_settings)
@@ -84,7 +85,7 @@ class MissionController:
 
         self.set_current_version()
         self.redraw_fast()
-        # self.redraw_slow()
+        self.redraw_slow()
         # self.update_timer_stat_loop()
         self.view.update_table_active_journals(self.model.get_data_active_journals())
         # self._start_realtime_listener()
@@ -114,7 +115,7 @@ class MissionController:
         self.update_journals()
         self._journal_update_pending = False
         self.view.root.after(0, 
-                             self.view.update_table_active_journals(self.model.get_data_active_journals())
+                             lambda: self.redraw_slow()
                              )
 
     def set_current_version(self):
@@ -204,6 +205,24 @@ class MissionController:
     #             self.view.show_message_box_warning('Error', f'Error while resetting settings\n{traceback.format_exc()}')
     
     def update_tables_fast(self, now):
+        pass
+        # with ThreadPoolExecutor(max_workers=4) as pool:
+        #     fut_update_missions = pool.submit(self.model.update_data_missions, now)
+        #     fut_get_active_missions = pool.submit(self.model.get_data_active_missions, self.active_fid, now)
+        #     fut_get_faction_distribution = pool.submit(self.model.get_data_distribution, self.active_fid)
+        #     fut_get_mission_stats = pool.submit(self.model.get_data_mission_stats, self.active_fid)
+        #     fut_get_active_journals = pool.submit(self.model.get_data_active_journals)
+        # fut_update_missions.result()
+        # active_missions, rows_to_highlight, rows_turn_in = fut_get_active_missions.result()
+        # faction_distribution = fut_get_faction_distribution.result()
+        # mission_stats = fut_get_mission_stats.result()
+        # active_journals = fut_get_active_journals.result()
+        # self.view.root.after(0, self.view.update_table_missions, active_missions, rows_to_highlight, rows_turn_in)
+        # self.view.root.after(0, self.view.update_table_faction_distribution, faction_distribution)
+        # self.view.root.after(0, self.view.update_table_mission_stats, mission_stats)
+        # self.view.root.after(0, self.view.update_table_active_journals, active_journals)
+
+    def update_tables_slow(self, now):
         with ThreadPoolExecutor(max_workers=4) as pool:
             fut_update_missions = pool.submit(self.model.update_data_missions, now)
             fut_get_active_missions = pool.submit(self.model.get_data_active_missions, self.active_fid, now)
@@ -219,25 +238,6 @@ class MissionController:
         self.view.root.after(0, self.view.update_table_faction_distribution, faction_distribution)
         self.view.root.after(0, self.view.update_table_mission_stats, mission_stats)
         self.view.root.after(0, self.view.update_table_active_journals, active_journals)
-
-    # def update_tables_slow(self, now):
-    #     with ThreadPoolExecutor(max_workers=4) as pool:
-    #         fut_finance = pool.submit(self.model.get_data_finance)
-    #         fut_trade = pool.submit(self.model.get_data_trade)
-    #         fut_services = pool.submit(self.model.get_data_services)
-    #         fut_misc = pool.submit(self.model.get_data_misc)
-    #         fut_pending = pool.submit(self.model.get_rows_pending_decom)
-
-    #     df_finance = fut_finance.result()
-    #     df_trade, trade_pending = fut_trade.result()
-    #     df_services = fut_services.result()
-    #     df_misc = fut_misc.result()
-    #     pending = fut_pending.result()
-
-    #     self.view.update_table_finance(df_finance, pending)
-    #     self.view.update_table_trade (df_trade, trade_pending)
-    #     self.view.update_table_services(df_services, pending)
-    #     self.view.update_table_misc   (df_misc, pending)
 
     def update_time(self, now):
         self.view.update_time(now.strftime('%H:%M:%S'))
@@ -360,17 +360,17 @@ class MissionController:
         else:
             self.view.root.after(REDRAW_INTERVAL_FAST, self.redraw_fast)
     
-    # def redraw_slow(self):
-    #     try:
-    #         now = datetime.now(timezone.utc)
-    #         self.update_tables_slow(now)
-    #     except Exception as e:
-    #         if self.view.show_message_box_askretrycancel('Error', f'An error occurred\n{traceback.format_exc()}'):
-    #             self.view.root.after(REDRAW_INTERVAL_SLOW, self.redraw_slow)
-    #         else:
-    #             self.view.root.destroy()
-    #     else:
-    #         self.view.root.after(REDRAW_INTERVAL_SLOW, self.redraw_slow)
+    def redraw_slow(self):
+        try:
+            now = datetime.now(timezone.utc)
+            self.update_tables_slow(now)
+        except Exception as e:
+            if self.view.show_message_box_askretrycancel('Error', f'An error occurred\n{traceback.format_exc()}'):
+                self.view.root.after(REDRAW_INTERVAL_SLOW, self.redraw_slow)
+            else:
+                self.view.root.destroy()
+        else:
+            self.view.root.after(REDRAW_INTERVAL_SLOW, self.redraw_slow)
 
     def get_selected_row(self, sheet=None, allow_multiple:bool=False) -> int|tuple[int]:
         if sheet is None:

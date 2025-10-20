@@ -388,7 +388,7 @@ class MissionModel:
                         if missionID in missions[fid]['Active']:
                             missions[fid]['Active'].remove(missionID)
                         continue
-                    if 'Expiry' in mission.keys() and now > mission['Expiry']:
+                    if 'Expiry' in mission.keys() and now > mission['Expiry'] + timedelta(days=14):
                         if missionID in missions[fid]['Active']:
                             missions[fid]['Active'].remove(missionID)
                         continue
