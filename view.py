@@ -80,7 +80,7 @@ class MissionView:
 
         # Set column headers
         self.sheet_missions.headers([
-            'TargetFaction', 'DestinationSystem', 'System', 'Station', 'Faction', 'Wing', 'KillCount', 'Reward', 'Expires'
+            'TargetFaction', 'TargetSystem', 'System', 'Station', 'Faction', 'Wing', 'KillCount', 'Reward', 'Expires'
         ])
 
         self.sheet_missions.grid(row=0, column=0, columnspan=3, sticky='nswe')
@@ -88,7 +88,7 @@ class MissionView:
         self.sheet_missions['D:F'].align('right', redraw=False)
 
         self.sheet_faction_distribution = Sheet(self.tab_stats, name='sheet_faction_distribution', empty_horizontal=0, empty_vertical=0)
-        self.sheet_faction_distribution.headers(['Faction', 'KillCount', 'Difference'])
+        self.sheet_faction_distribution.headers(['Faction', 'KillCount', 'Diff'])
         self.sheet_faction_distribution.hide('top_left')
         self.sheet_faction_distribution.hide('row_index')
         # self.sheet_faction_distribution.grid(row=0, column=0, columnspan=1, sticky='nswe')
