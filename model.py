@@ -33,7 +33,8 @@ class JournalReader:
         self._missions_abandoned = []
         self._docked = []
         self._undocked = []
-        self.tracked_items = ["load_games", "missions", "missions_accepted", "missions_redirected", "missions_completed", "missions_failed", "missions_abandoned", "docked", "undocked"]
+        self._fsd_jumps = []
+        self.tracked_items = ["load_games", "missions", "missions_accepted", "missions_redirected", "missions_completed", "missions_failed", "missions_abandoned", "docked", "undocked", "fsd_jumps"]
         self._last_items_count = {item_type: len(getattr(self, f'_{item_type}')) for item_type in self.tracked_items}
         self._last_items_count_pending = {item_type: len(getattr(self, f'_{item_type}')) for item_type in self.tracked_items}
         self.items = []
@@ -146,6 +147,9 @@ class JournalReader:
             if item['event'] == 'Undocked':
                 item['FID'] = fid
                 self._undocked.append(item)
+            if item['event'] == 'FSDJump':
+                item['FID'] = fid
+                self._fsd_jumps.append(item)
                 
         is_active = len(items) == 0 or items[-1]['event'] != 'Shutdown'
         return fid, is_active
@@ -208,11 +212,13 @@ class MissionModel:
         # self.data_missions = {}
         self.journal_reader.read_journals()
         first_read = self.data_missions == {}
-        load_games, missions, missions_accepted, missions_redirected, missions_completed, missions_failed, missions_abandoned, docked, undocked = self.journal_reader.get_items() if first_read else self.journal_reader.get_new_items()
+        load_games, missions, missions_accepted, missions_redirected, missions_completed, missions_failed, missions_abandoned, docked, undocked, fsd_jumps = self.journal_reader.get_items() if first_read else self.journal_reader.get_new_items()
 
         self.process_load_games(load_games)
 
-        self.process_docking(docked, undocked)
+        self.process_itinerary(docked, undocked, fsd_jumps)
+
+        self.process_fsd_jumps(fsd_jumps)
 
         self.process_missions(missions)
         
@@ -233,37 +239,37 @@ class MissionModel:
             if not first_read or load_game['FID'] not in self.cmdr_names.keys():
                 self.cmdr_names[load_game['FID']] = load_game['Commander']
 
-    def process_docking(self, docked, undocked):
-        df_docks = pd.DataFrame(docked + undocked, columns=['timestamp', 'event', 'StationName', 'StarSystem', 'MarketID', 'FID'])
-        df_docks['timestamp'] = df_docks['timestamp'].apply(lambda x: datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc))
-        df_docks = df_docks.sort_values(by='timestamp', ascending=False).reset_index(drop=True)
-        if __name__ == '__main__':
-            print('Docking/Undocking events:')
-            print(df_docks)
-        for fid in df_docks['FID'].unique():
-            df_fid = df_docks[df_docks['FID'] == fid].copy()
+    def process_itinerary(self, docked, undocked, fsd_jumps):
+        df_events = pd.DataFrame(docked + undocked + fsd_jumps, columns=['timestamp', 'event', 'StationName', 'StarSystem', 'MarketID', 'FID'])
+        df_events['timestamp'] = df_events['timestamp'].apply(lambda x: datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc))
+        df_events = df_events.sort_values(by='timestamp', ascending=False).reset_index(drop=True)
+        for fid in df_events['FID'].unique():
+            df_fid = df_events[df_events['FID'] == fid].copy()
             if df_fid.empty:
                 if fid not in self.cmdr_locations.keys():
-                    self.cmdr_locations[fid] = pd.DataFrame(columns=['StarSystem', 'StationName', 'MarketID', 'DockedAt', 'UndockedAt'])
+                    self.cmdr_locations[fid] = pd.DataFrame(columns=['StarSystem', 'StationName', 'MarketID', 'DockedAt', 'UndockedAt', 'JumpedInAt'])
             else:
-                if __name__ == '__main__':
-                    print(f'Latest docking/undocking events for {self.cmdr_names[fid]} ({fid}):')
-                    print(df_fid)
-
                 itinerary = []
                 for i in range(df_fid.shape[0]):
                     event = df_fid.iloc[i]
                     if event['event'] == 'Docked':
-                        if i == 0 or itinerary[-1]['MarketID'] != event['MarketID']:
-                            itinerary.append({'StarSystem': event['StarSystem'], 'StationName': event['StationName'], 'MarketID': event['MarketID'], 'DockedAt': event['timestamp'], 'UndockedAt': None})
+                        if i == 0 or itinerary[-1]['MarketID'] != event['MarketID'] or itinerary[-1]['DockedAt'] is not None:
+                            itinerary.append({'StarSystem': event['StarSystem'], 'StationName': event['StationName'], 'MarketID': event['MarketID'], 'DockedAt': event['timestamp'], 'UndockedAt': None, 'JumpedInAt': None})
                         else:
                             itinerary[-1]['DockedAt'] = event['timestamp']
+                            itinerary[-1]['StationName'] = event['StationName']
+                            itinerary[-1]['StarSystem'] = event['StarSystem']
+                    elif event['event'] == 'Undocked':
+                        itinerary.append({'StarSystem': None, 'StationName': event['StationName'], 'MarketID': event['MarketID'], 'DockedAt': None, 'UndockedAt': event['timestamp'], 'JumpedInAt': None})
+                    elif event['event'] == 'FSDJump':
+                        if i == 0 or itinerary[-1]['StarSystem'] != event['StarSystem'] or itinerary[-1]['JumpedInAt'] is not None:
+                            itinerary.append({'StarSystem': event['StarSystem'], 'StationName': None, 'MarketID': None, 'DockedAt': None, 'UndockedAt': None, 'JumpedInAt': event['timestamp']})
+                        else:
+                            itinerary[-1]['JumpedInAt'] = event['timestamp']
                             itinerary[-1]['StarSystem'] = event['StarSystem']
                     else:
-                        if i == 0 or itinerary[-1]['MarketID'] != event['MarketID']:
-                            itinerary.append({'StarSystem': None, 'StationName': event['StationName'], 'MarketID': event['MarketID'], 'DockedAt': None, 'UndockedAt': event['timestamp']})
-                        else:
-                            itinerary[-1]['UndockedAt'] = event['timestamp']
+                        raise ValueError(f'Unknown event type {event["event"]} in itinerary events')
+
                 df_itinerary = pd.DataFrame(itinerary)
                 if self.cmdr_locations.get(fid, None) is not None:
                     df_old = self.cmdr_locations[fid].copy()
@@ -273,10 +279,37 @@ class MissionModel:
                         if df_itinerary.iloc[-1]['UndockedAt'] is None:
                             df_itinerary.iloc[-1]['UndockedAt'] = df_old.iloc[0]['UndockedAt']
                     df_itinerary = pd.concat([df_itinerary, df_old[1:]]).reset_index(drop=True)
+                self.cmdr_locations[fid] = df_itinerary.copy()
+
+    def process_fsd_jumps(self, fsd_jumps):
+        df_jumps = pd.DataFrame(fsd_jumps, columns=['timestamp', 'Taxi', 'Multicrew', 'StarSystem', 'FID', 'Factions'])
+        df_jumps['timestamp'] = df_jumps['timestamp'].apply(lambda x: datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc))
+        for fid in df_jumps['FID'].unique():
+            df_jumps_fid = df_jumps[df_jumps['FID'] == fid].copy()
+            if df_jumps_fid.empty:
+                pass
+            else:
                 if __name__ == '__main__':
-                    print(f'Itinerary for {self.cmdr_names[fid]} ({fid}):')
-                    print(df_itinerary)
-                self.cmdr_locations[fid] = df_itinerary.copy()                
+                    print(f'FSD Jump events for {self.cmdr_names.get(fid, "Unknown")} ({fid}):')
+                    print(df_jumps_fid)
+                if fid not in self.cmdr_locations.keys():
+                    self.cmdr_locations[fid] = pd.DataFrame(columns=['StarSystem', 'StationName', 'MarketID', 'DockedAt', 'UndockedAt', 'JumpedInAt'])
+                df_old = self.cmdr_locations[fid].copy()
+                df_new = df_old.copy()
+                for i, event in df_jumps_fid.iterrows():
+                    if event['StarSystem'] not in df_new['StarSystem'].values:
+                        df_new = pd.concat([df_new, pd.DataFrame([{
+                            'StarSystem': event['StarSystem'],
+                            'StationName': None,
+                            'MarketID': None,
+                            'DockedAt': None,
+                            'UndockedAt': None,
+                            'JumpedInAt': event['timestamp']
+                        }])], ignore_index=True)
+                    else:
+                        idx = df_new[df_new['StarSystem'] == event['StarSystem']].index[0]
+                        df_new.loc[idx, 'JumpedInAt'] = event['timestamp']
+                self.cmdr_locations[fid] = df_new.copy()
 
     def initialize_mission_data(self, fid: str):
         if fid not in self.data_missions.keys():
