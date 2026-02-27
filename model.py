@@ -454,18 +454,21 @@ class MissionModel:
         if fid not in self.cmdr_locations.keys():
             return None, None
         df = self.cmdr_locations[fid]
-        df = df[(df['DockedAt'].notna()) & (df['DockedAt'] <= time) & ((df['UndockedAt'].isna()) | (df['UndockedAt'] > time))]
-        if df.empty:
-            return None, None
-        return df.iloc[0]['StarSystem'], df.iloc[0]['StationName']
+        df_docked = df[(df['DockedAt'].notna()) & (df['DockedAt'] <= time) & ((df['UndockedAt'].isna()) | (df['UndockedAt'] > time))]
+        if df_docked.empty:
+            df_jumped = df[(df['JumpedInAt'].notna()) & (df['JumpedInAt'] <= time)]
+            if df_jumped.empty:
+                return None, None
+            return df_jumped.iloc[0]['StarSystem'], None
+        return df_docked.iloc[0]['StarSystem'], df_docked.iloc[0]['StationName']
 
-    def get_cmdr_current_docked_location(self, fid:str) -> tuple[str|None, str|None]:
-        if fid not in self.cmdr_locations.keys():
+    def get_cmdr_current_location(self, fid:str) -> tuple[str|None, str|None]:
+        if fid not in self.cmdr_locations.keys() or self.cmdr_locations[fid].empty:
             return None, None
-        df = self.cmdr_locations[fid].iloc[0]
-        if pd.isna(df['DockedAt']) or pd.notna(df['UndockedAt']):
-            return None, None
-        return df['StarSystem'], df['StationName']
+        last_location = self.cmdr_locations[fid].iloc[0]
+        if pd.isna(last_location['DockedAt']) or pd.notna(last_location['UndockedAt']):
+            return last_location['StarSystem'], None
+        return last_location['StarSystem'], last_location['StationName']
 
     def get_active_missions(self, fid):
         missions = {}
@@ -492,7 +495,7 @@ class MissionModel:
                 'Expires': mission.get('Expiry', None),
             }
         redirected = [i for i, mission in enumerate(missions.values()) if mission.get('Redirected', False)]
-        docked_system, docked_station = self.get_cmdr_current_docked_location(fid)
+        docked_system, docked_station = self.get_cmdr_current_location(fid)
         if docked_system is None or docked_station is None:
             return info, redirected, []
         at_location = [i for i, mission in enumerate(missions.values()) if mission['System'] == docked_system and mission['Station'] == docked_station]
@@ -629,5 +632,7 @@ if __name__ == '__main__':
     print(model.get_cmdr_name('F11601975'))
     print(model.get_cmdr_location('F11601975', datetime(2025, 10, 9, 21, 20, 42, tzinfo=timezone.utc)))
     print(model.get_cmdr_location('F11601975', datetime.now(timezone.utc)))
+    print(model.get_cmdr_current_location('F11601975'))
+    print(model.get_cmdr_location('F11829203', datetime(2025, 10, 31, 3, 00, 00, tzinfo=timezone.utc)))
     # print(model.get_data_missions()['F11601975']['Complete'])
     
