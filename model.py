@@ -444,10 +444,10 @@ class MissionModel:
         return None
     
     def get_all_cmdr_names(self) -> list[str]:
-        return list(self.cmdr_names.values())
+        return [self.get_cmdr_name(fid) for fid in self.get_all_fids()]
     
     def get_all_fids(self) -> list[str]:
-        return list(self.cmdr_names.keys())
+        return sorted(list(self.cmdr_names.keys()), key=lambda x: int(x.replace('F', '')))
     
     def get_cmdr_location(self, fid:str, time:datetime) -> tuple[str|None, str|None]:
         if fid not in self.cmdr_locations.keys():

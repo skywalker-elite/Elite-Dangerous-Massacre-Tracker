@@ -6,5 +6,7 @@ pyperclip==1.9.0
 numpy==2.0.0
 humanize==4.12.2
 watchdog==6.0.0
-Pillow==11.3.0
+Pillow==12.1.1
 requests==2.32.4
+dotenv==0.9.9
+packaging==24.2 # also dependency of PyInstaller
