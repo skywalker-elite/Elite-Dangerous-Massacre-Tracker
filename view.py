@@ -113,6 +113,10 @@ class MissionView:
         self.dropdown_cmdr_var = tk.StringVar()
         self.dropdown_cmdr = ttk.Combobox(self.bottom_bar, textvariable=self.dropdown_cmdr_var, state='readonly')
         self.dropdown_cmdr.pack(side='right', padx=5, pady=5)
+        def on_cmdr_selected(e):
+            self.dropdown_cmdr.selection_clear()
+            self.sheet_missions.focus_set()
+        self.dropdown_cmdr.bind("<<ComboboxSelected>>", lambda e: on_cmdr_selected(e))
         # # Buttons
         # # Post trade
         # self.button_post_trade = ttk.Button(self.bottom_bar, text='Post Trade')
@@ -150,16 +154,16 @@ class MissionView:
         )
         self.checkbox_show_active_journals.pack(side='left', padx=10, pady=10, anchor='w')
 
-        self.labelframe_settings = ttk.Labelframe(self.tab_options.scrollable_frame, text='Settings')
-        self.labelframe_settings.grid(row=2, column=0, padx=10, pady=10, sticky='w')
-        self.button_reload_settings = ttk.Button(self.labelframe_settings, text='Reload Settings File')
-        self.button_reload_settings.pack(side='left', padx=10, pady=10, anchor='w')
-        self.button_open_settings = ttk.Button(self.labelframe_settings, text='Open Settings File')
-        self.button_open_settings.pack(side='left', padx=10, pady=10, anchor='w')
-        self.button_open_settings_dir = ttk.Button(self.labelframe_settings, text='Open Settings Directory')
-        self.button_open_settings_dir.pack(side='left', padx=10, pady=10, anchor='w')
-        self.button_reset_settings = ttk.Button(self.labelframe_settings, text='Reset Settings to Defaults', style='Danger.TButton')
-        self.button_reset_settings.pack(side='left', padx=10, pady=10, anchor='w')
+        # self.labelframe_settings = ttk.Labelframe(self.tab_options.scrollable_frame, text='Settings')
+        # self.labelframe_settings.grid(row=2, column=0, padx=10, pady=10, sticky='w')
+        # self.button_reload_settings = ttk.Button(self.labelframe_settings, text='Reload Settings File')
+        # self.button_reload_settings.pack(side='left', padx=10, pady=10, anchor='w')
+        # self.button_open_settings = ttk.Button(self.labelframe_settings, text='Open Settings File')
+        # self.button_open_settings.pack(side='left', padx=10, pady=10, anchor='w')
+        # self.button_open_settings_dir = ttk.Button(self.labelframe_settings, text='Open Settings Directory')
+        # self.button_open_settings_dir.pack(side='left', padx=10, pady=10, anchor='w')
+        # self.button_reset_settings = ttk.Button(self.labelframe_settings, text='Reset Settings to Defaults', style='Danger.TButton')
+        # self.button_reset_settings.pack(side='left', padx=10, pady=10, anchor='w')
 
         # Active Journals tab
         self.sheet_active_journals = Sheet(self.tab_active_journals, name='sheet_active_journals')

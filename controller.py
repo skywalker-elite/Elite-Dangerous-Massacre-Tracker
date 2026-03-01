@@ -57,15 +57,15 @@ class MissionController:
         self.view.button_open_journal.configure(command=self.button_click_open_journal)
         self.view.button_check_updates.configure(command=lambda: self.check_app_update(notify_is_latest=True))
         # self.view.button_reload_settings.configure(command=self.button_click_reload_settings)
-        self.view.button_open_settings.configure(command=lambda: open_file(getSettingsPath()))
+        # self.view.button_open_settings.configure(command=lambda: open_file(getSettingsPath()))
         # self.view.button_reset_settings.configure(command=self.button_click_reset_settings)
-        self.view.button_open_settings_dir.configure(command=lambda: open_file(getSettingsDir()))
+        # self.view.button_open_settings_dir.configure(command=lambda: open_file(getSettingsDir()))
         # self.view.button_test_trade_post.configure(command=self.button_click_test_trade_post)
         # self.view.button_test_wine_unload.configure(command=self.button_click_test_wine_unload)
         # self.view.button_test_discord.configure(command=self.button_click_test_discord_webhook)
         # self.view.button_test_discord_ping.configure(command=self.button_click_test_discord_webhook_ping)
         self.view.button_clear_cache.configure(command=self.button_click_clear_cache)
-        self.view.button_go_to_github.configure(command=lambda: open_new_tab(url='https://github.com/skywalker-elite/Elite-Dangerous-Carrier-Manager'))
+        self.view.button_go_to_github.configure(command=lambda: open_new_tab(url='https://github.com/skywalker-elite/Elite-Dangerous-Massacre-Tracker'))
         # self.view.checkbox_show_active_journals_var.trace_add('write', lambda *args: self.settings.set_config('UI', 'show_active_journals_tab', value=self.view.checkbox_show_active_journals_var.get()))
         # self.view.checkbox_minimize_to_tray_var.trace_add('write', lambda *args: self.settings.set_config('UI', 'minimize_to_tray', value=self.view.checkbox_minimize_to_tray_var.get()))
         # self.view.checkbox_minimize_to_tray.configure(command=lambda: self.setup_tray_icon())
@@ -130,9 +130,9 @@ class MissionController:
             prompt = f'New version available: {version_latest}\nGo to download?'
             if self.view.show_message_box_askyesno('Update Available', prompt):
                 if isOnPrerelease():
-                    url = f'https://github.com/skywalker-elite/Elite-Dangerous-Carrier-Manager/releases/tag/{version_latest}'
+                    url = f'https://github.com/skywalker-elite/Elite-Dangerous-Massacre-Tracker/releases/tag/{version_latest}'
                 else:
-                    url = 'https://github.com/skywalker-elite/Elite-Dangerous-Carrier-Manager/releases/latest'
+                    url = 'https://github.com/skywalker-elite/Elite-Dangerous-Massacre-Tracker/releases/latest'
                 open_new_tab(url=url)
         elif notify_is_latest:
             version_current = getCurrentVersion()
@@ -223,7 +223,7 @@ class MissionController:
         # self.view.root.after(0, self.view.update_table_active_journals, active_journals)
 
     def update_tables_slow(self, now):
-        with ThreadPoolExecutor(max_workers=4) as pool:
+        with ThreadPoolExecutor(max_workers=5) as pool:
             fut_update_missions = pool.submit(self.model.update_data_missions, now)
             fut_get_active_missions = pool.submit(self.model.get_data_active_missions, self.active_fid, now)
             fut_get_faction_distribution = pool.submit(self.model.get_data_distribution, self.active_fid)
