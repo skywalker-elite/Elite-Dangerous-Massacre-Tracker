@@ -67,7 +67,7 @@ def isUpdateAvailable() -> bool:
 
 def getLatestVersion() -> str|None:
     try:
-        response = requests.get('https://api.github.com/repos/skywalker-elite/Elite-Dangerous-Carrier-Manager/releases/latest')
+        response = requests.get('https://api.github.com/repos/skywalker-elite/Elite-Dangerous-Massacre-Tracker/releases/latest')
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f'Error while checking update: {e}')
@@ -88,7 +88,7 @@ def getLatestPrereleaseVersion() -> str|None:
     """
     try:
         resp = requests.get(
-            'https://api.github.com/repos/skywalker-elite/Elite-Dangerous-Carrier-Manager/releases'
+            'https://api.github.com/repos/skywalker-elite/Elite-Dangerous-Massacre-Tracker/releases'
         )
         resp.raise_for_status()
     except requests.exceptions.RequestException as e:
@@ -134,26 +134,26 @@ def open_file(filename):
 def getAppDir() -> str:
     if sys.platform == 'win32':
         user_path = os.environ.get('USERPROFILE')
-        return os.path.join(user_path, 'AppData', 'Roaming', 'Skywalker-Elite', 'Elite Dangerous Carrier Manager')
+        return os.path.join(user_path, 'AppData', 'Roaming', 'Skywalker-Elite', 'Elite Dangerous Massacre Tracker')
     elif sys.platform == 'linux':
         user_path = os.path.expanduser('~')
-        return os.path.join(user_path, '.config', 'Skywalker-Elite', 'Elite Dangerous Carrier Manager')
+        return os.path.join(user_path, '.config', 'Skywalker-Elite', 'Elite Dangerous Massacre Tracker')
     elif sys.platform == 'darwin':
         user_path = os.path.expanduser('~')
-        return os.path.join(user_path, '.config', 'Skywalker-Elite', 'Elite Dangerous Carrier Manager')
+        return os.path.join(user_path, '.config', 'Skywalker-Elite', 'Elite Dangerous Massacre Tracker')
     else:
         return None
 
 def getSettingsDir() -> str:
     if sys.platform == 'win32':
         user_path = os.environ.get('USERPROFILE')
-        return os.path.join(user_path, 'AppData', 'Roaming', 'Skywalker-Elite', 'Elite Dangerous Carrier Manager')
+        return os.path.join(user_path, 'AppData', 'Roaming', 'Skywalker-Elite', 'Elite Dangerous Massacre Tracker')
     elif sys.platform == 'linux':
         user_path = os.path.expanduser('~')
-        return os.path.join(user_path, '.config', 'Skywalker-Elite', 'Elite Dangerous Carrier Manager')
+        return os.path.join(user_path, '.config', 'Skywalker-Elite', 'Elite Dangerous Massacre Tracker')
     elif sys.platform == 'darwin':
         user_path = os.path.expanduser('~')
-        return os.path.join(user_path, '.config', 'Skywalker-Elite', 'Elite Dangerous Carrier Manager')
+        return os.path.join(user_path, '.config', 'Skywalker-Elite', 'Elite Dangerous Massacre Tracker')
     else:
         return None
 
@@ -201,60 +201,3 @@ def getCachePath(jr_version:str, journal_paths:list[str]) -> str:
         except:
             return None
         
-def getInfoHash(journal_timestamp:datetime, timer:int, carrierID:int) -> str:
-    h = hashlib.sha256()
-    h.update(journal_timestamp.isoformat().encode('utf-8'))
-    h.update(str(timer).encode('utf-8'))
-    h.update(str(carrierID).encode('utf-8'))
-    return h.hexdigest()[:40]
-
-# @rate_limited(max_calls=20, period=60)
-def getExpectedJumpTimer() -> tuple[str|None, int|None, datetime|None, datetime|None, float|None]:
-    response = requests.get('https://ujpdxqvevfxjivvnlzds.supabase.co/functions/v1/avg-jump-timer-stats-v2')
-    if response.status_code == 200:
-        data = response.json()[0]
-        if data is None:
-            return None, None, None, None
-        avg_timer = data.get('avg', None)
-        count = data.get('cnt', None)
-        earliest = data.get('earliest', None)
-        latest = data.get('latest', None)
-        slope = data.get('slope', None)
-        if avg_timer is not None:
-            h, m, s = getHMS(int(avg_timer))
-            avg_timer = f'{h:02} h {m:02} m {s:02} s'
-        return avg_timer, count, datetime.fromisoformat(earliest) if earliest else None, datetime.fromisoformat(latest) if latest else None, slope
-    return None, None, None, None, None
-
-def getHumanizedExpectedJumpTimer() -> str:
-    avg_timer, count, earliest, latest, slope = getExpectedJumpTimer()
-    return getTimerStatDescription(avg_timer, count, earliest, latest, slope)
-
-def getTimerStatDescription(avg_timer:str|None, count:int|None, earliest:datetime|None, latest:datetime|None, slope:float|None) -> str:
-    # Disable slope description for now, not enough data to be useful
-    # return '\n'.join([generateHumanizedExpectedJumpTimer(avg_timer, count, earliest, latest), generateTimerSlopeDescription(slope)])
-    return generateHumanizedExpectedJumpTimer(avg_timer, count, earliest, latest)
-
-def generateHumanizedExpectedJumpTimer(avg_timer:str|None, count:int|None, earliest:datetime|None, latest:datetime|None) -> str:
-    if avg_timer is None:
-        return 'No recent timer reported'
-    else:
-        earliest_str = naturaltime(earliest) if earliest else 'N/A'
-        latest_str = naturaltime(latest) if latest else 'N/A'
-        return f'Average jump timer: {avg_timer} based on {count} sample(s) from {earliest_str} to {latest_str}'
-    
-def generateTimerSlopeDescription(slope:float|None) -> str:
-    return '' # Disable slope description for now, not enough data to be useful
-    if slope is None:
-        return 'No trend data available'
-    elif slope > timer_slope_thresholds['surge']:
-        return 'Timer is surging'
-    elif slope > timer_slope_thresholds['climb']:
-        return 'Timer is climbing'
-    elif slope < timer_slope_thresholds['down']:
-        return 'Timer is declining'
-    else:
-        return 'Timer is stable'
-
-if __name__ == '__main__':
-    print(getHumanizedExpectedJumpTimer())

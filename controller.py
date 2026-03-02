@@ -27,10 +27,10 @@ from concurrent.futures import ThreadPoolExecutor
 # from settings import Settings, SettingsValidationError
 from model import MissionModel
 from view import MissionView
-from utility import checkTimerFormat, getTimerStatDescription, getCurrentVersion, getLatestVersion, getLatestPrereleaseVersion, getResourcePath, isOnPrerelease, isUpdateAvailable, getSettingsPath, getSettingsDefaultPath, getSettingsDir, getAppDir, getCachePath, open_file, getInfoHash, getExpectedJumpTimer
+from utility import getCurrentVersion, getLatestVersion, getLatestPrereleaseVersion, getResourcePath, isOnPrerelease, isUpdateAvailable, getSettingsPath, getSettingsDefaultPath, getSettingsDir, getAppDir, getCachePath, open_file
 # from decos import debounce
 # from discord_handler import DiscordWebhookHandler
-from config import UPDATE_INTERVAL, UPDATE_INTERVAL_TIMER_STATS, REDRAW_INTERVAL_FAST, REDRAW_INTERVAL_SLOW, REMIND_INTERVAL, SAVE_CACHE_INTERVAL
+from config import UPDATE_INTERVAL, REDRAW_INTERVAL_FAST, REDRAW_INTERVAL_SLOW, REMIND_INTERVAL, SAVE_CACHE_INTERVAL
 
 if TYPE_CHECKING: 
     import tksheet
