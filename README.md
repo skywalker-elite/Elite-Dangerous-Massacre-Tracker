@@ -1,5 +1,5 @@
 # Elite Dangerous Massacre Tracker (EDMT)
-![Banner](images_readme\EDMT_Banner.png)
+![Banner](images_readme/EDMT_Banner.png)
 A tool to track and manage massacre missions in Elite Dangerous.
 # Work in Progress
 This project is currently under development. Instabilities and bugs may occur. Features and functionalities may change.
