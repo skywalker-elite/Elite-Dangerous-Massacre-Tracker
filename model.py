@@ -218,7 +218,7 @@ class MissionModel:
 
         self.process_itinerary(docked, undocked, fsd_jumps)
 
-        self.process_fsd_jumps(fsd_jumps)
+        # self.process_fsd_jumps(fsd_jumps)
 
         self.process_missions(missions)
         
@@ -233,6 +233,8 @@ class MissionModel:
         self.process_missions_abandoned(missions_abandoned)
 
         self.update_data_missions(datetime.now(timezone.utc))
+
+        self.journal_reader.update_items_count()
 
     def process_load_games(self, load_games, first_read:bool=True):
         for load_game in load_games:
@@ -280,35 +282,35 @@ class MissionModel:
                 df_itinerary = df_itinerary.astype({'MarketID': 'Int64'})
                 self.cmdr_locations[fid] = df_itinerary.copy()
 
-    def process_fsd_jumps(self, fsd_jumps):
-        df_jumps = pd.DataFrame(fsd_jumps, columns=['timestamp', 'Taxi', 'Multicrew', 'StarSystem', 'FID', 'Factions'])
-        df_jumps['timestamp'] = df_jumps['timestamp'].apply(lambda x: datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc))
-        for fid in df_jumps['FID'].unique():
-            df_jumps_fid = df_jumps[df_jumps['FID'] == fid].copy()
-            if df_jumps_fid.empty:
-                pass
-            else:
-                if __name__ == '__main__':
-                    print(f'FSD Jump events for {self.cmdr_names.get(fid, "Unknown")} ({fid}):')
-                    print(df_jumps_fid)
-                if fid not in self.cmdr_locations.keys():
-                    self.cmdr_locations[fid] = pd.DataFrame(columns=['StarSystem', 'StationName', 'MarketID', 'DockedAt', 'UndockedAt', 'JumpedInAt'])
-                df_old = self.cmdr_locations[fid].copy()
-                df_new = df_old.copy()
-                for i, event in df_jumps_fid.iterrows():
-                    if event['StarSystem'] not in df_new['StarSystem'].values:
-                        df_new = pd.concat([df_new, pd.DataFrame([{
-                            'StarSystem': event['StarSystem'],
-                            'StationName': None,
-                            'MarketID': None,
-                            'DockedAt': None,
-                            'UndockedAt': None,
-                            'JumpedInAt': event['timestamp']
-                        }])], ignore_index=True)
-                    else:
-                        idx = df_new[df_new['StarSystem'] == event['StarSystem']].index[0]
-                        df_new.loc[idx, 'JumpedInAt'] = event['timestamp']
-                self.cmdr_locations[fid] = df_new.copy()
+    # def process_fsd_jumps(self, fsd_jumps):
+    #     df_jumps = pd.DataFrame(fsd_jumps, columns=['timestamp', 'Taxi', 'Multicrew', 'StarSystem', 'FID', 'Factions'])
+    #     df_jumps['timestamp'] = df_jumps['timestamp'].apply(lambda x: datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc))
+    #     for fid in df_jumps['FID'].unique():
+    #         df_jumps_fid = df_jumps[df_jumps['FID'] == fid].copy()
+    #         if df_jumps_fid.empty:
+    #             pass
+    #         else:
+    #             if __name__ == '__main__':
+    #                 print(f'FSD Jump events for {self.cmdr_names.get(fid, "Unknown")} ({fid}):')
+    #                 print(df_jumps_fid)
+    #             if fid not in self.cmdr_locations.keys():
+    #                 self.cmdr_locations[fid] = pd.DataFrame(columns=['StarSystem', 'StationName', 'MarketID', 'DockedAt', 'UndockedAt', 'JumpedInAt'])
+    #             df_old = self.cmdr_locations[fid].copy()
+    #             df_new = df_old.copy()
+    #             for i, event in df_jumps_fid.iterrows():
+    #                 if event['StarSystem'] not in df_new['StarSystem'].values:
+    #                     df_new = pd.concat([df_new, pd.DataFrame([{
+    #                         'StarSystem': event['StarSystem'],
+    #                         'StationName': None,
+    #                         'MarketID': None,
+    #                         'DockedAt': None,
+    #                         'UndockedAt': None,
+    #                         'JumpedInAt': event['timestamp']
+    #                     }])], ignore_index=True)
+    #                 else:
+    #                     idx = df_new[df_new['StarSystem'] == event['StarSystem']].index[0]
+    #                     df_new.loc[idx, 'JumpedInAt'] = event['timestamp']
+    #             self.cmdr_locations[fid] = df_new.copy()
 
     def initialize_mission_data(self, fid: str):
         if fid not in self.data_missions.keys():
@@ -411,20 +413,16 @@ class MissionModel:
         missions = self.data_missions.copy()
         for fid in missions.keys():
             if 'Missions' in missions[fid].keys():
+                active = []
                 for missionID, mission in missions[fid]['Missions'].items():
                     if missionID in missions[fid]['Complete']:
-                        if missionID in missions[fid]['Active']:
-                            missions[fid]['Active'].remove(missionID)
                         continue
                     if missionID in missions[fid]['Failed']:
-                        if missionID in missions[fid]['Active']:
-                            missions[fid]['Active'].remove(missionID)
                         continue
                     if 'Expiry' in mission.keys() and now > mission['Expiry'] + timedelta(days=14):
-                        if missionID in missions[fid]['Active']:
-                            missions[fid]['Active'].remove(missionID)
                         continue
-                    missions[fid]['Active'].append(missionID)
+                    active.append(missionID)
+                missions[fid]['Active'] = active
 
         self.data_missions_updated = missions.copy()
 
