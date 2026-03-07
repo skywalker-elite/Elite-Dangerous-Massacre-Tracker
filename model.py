@@ -516,6 +516,7 @@ class MissionModel:
             return [['No active missions']]
         missions = self.get_active_missions(fid)
         df = pd.DataFrame(missions).T
+        df = df[df['Redirected'] == False]
         if df.empty:
             return [['No active missions']]
         distribution = df[['Faction', 'KillCount']].groupby('Faction').sum().reset_index()
