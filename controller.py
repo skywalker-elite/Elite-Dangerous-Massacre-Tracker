@@ -27,7 +27,7 @@ from concurrent.futures import ThreadPoolExecutor
 # from settings import Settings, SettingsValidationError
 from model import MissionModel
 from view import MissionView
-from utility import getCurrentVersion, getLatestVersion, getLatestPrereleaseVersion, getResourcePath, isOnPrerelease, isUpdateAvailable, getSettingsPath, getSettingsDefaultPath, getSettingsDir, getAppDir, getCachePath, open_file
+from utility import getCurrentVersion, getLatestVersion, getPrereleaseUpdateVersion, getResourcePath, isOnPrerelease, isUpdateAvailable, getSettingsPath, getSettingsDefaultPath, getSettingsDir, getAppDir, getCachePath, open_file
 # from decos import debounce
 # from discord_handler import DiscordWebhookHandler
 from config import UPDATE_INTERVAL, REDRAW_INTERVAL_FAST, REDRAW_INTERVAL_SLOW, REMIND_INTERVAL, SAVE_CACHE_INTERVAL
@@ -81,7 +81,7 @@ class MissionController:
         self.redraw_fast()
         self.redraw_slow()
         self.view.update_table_active_journals(self.model.get_data_active_journals())
-        # self.check_app_update()
+        self.check_app_update()
         self.minimize_hint_sent = False
 
         threading.Thread(target=self.save_cache, daemon=True).start()
@@ -108,7 +108,7 @@ class MissionController:
     def check_app_update(self, notify_is_latest:bool=False):
         if isUpdateAvailable():
             if isOnPrerelease():
-                version_latest = getLatestPrereleaseVersion()
+                version_latest = getPrereleaseUpdateVersion()
             else:
                 version_latest = getLatestVersion()
             prompt = f'New version available: {version_latest}\nGo to download?'
