@@ -2,7 +2,7 @@ from sys import platform
 
 APP_NAME = "Elite Dangerous Massacre Tracker"
 
-WINDOW_SIZE = "1080x420"
+WINDOW_SIZE = "1080x600"
 WINDOW_SIZE_TIMER = "300x120"
 
 UPDATE_INTERVAL = 500
