@@ -207,6 +207,16 @@ class MissionController:
         # self.view.root.after(0, self.view.update_table_active_journals, active_journals)
 
     def update_tables_slow(self, now):
+        # self.model.update_data_missions(now)
+        # active_missions, rows_to_highlight, rows_turn_in = self.model.get_data_active_missions(self.active_fid, now)
+        # faction_distribution = self.model.get_data_distribution(self.active_fid)
+        # mission_stats, mission_stats_rewards = self.model.get_data_mission_stats(self.active_fid)
+        # active_journals = self.model.get_data_active_journals()
+        # self.view.update_table_missions(active_missions, rows_to_highlight, rows_turn_in)
+        # self.view.update_table_faction_distribution(faction_distribution)
+        # self.view.update_table_mission_stats(mission_stats)
+        # self.view.update_table_mission_stats_rewards(mission_stats_rewards)
+        # self.view.update_table_active_journals(active_journals)
         with ThreadPoolExecutor(max_workers=5) as pool:
             fut_update_missions = pool.submit(self.model.update_data_missions, now)
             fut_get_active_missions = pool.submit(self.model.get_data_active_missions, self.active_fid, now)
@@ -216,11 +226,12 @@ class MissionController:
         fut_update_missions.result()
         active_missions, rows_to_highlight, rows_turn_in = fut_get_active_missions.result()
         faction_distribution = fut_get_faction_distribution.result()
-        mission_stats = fut_get_mission_stats.result()
+        mission_stats, mission_stats_rewards = fut_get_mission_stats.result()
         active_journals = fut_get_active_journals.result()
         self.view.root.after(0, self.view.update_table_missions, active_missions, rows_to_highlight, rows_turn_in)
         self.view.root.after(0, self.view.update_table_faction_distribution, faction_distribution)
         self.view.root.after(0, self.view.update_table_mission_stats, mission_stats)
+        self.view.root.after(0, self.view.update_table_mission_stats_rewards, mission_stats_rewards)
         self.view.root.after(0, self.view.update_table_active_journals, active_journals)
 
     def update_time(self, now):
