@@ -515,22 +515,25 @@ class MissionModel:
         df['Wing'] = df['Wing'].apply(lambda x: 'Yes' if x else 'No')
         return df[['TargetFaction', 'DestinationSystem', 'System', 'Station', 'Faction', 'Wing', 'KillCount', 'Reward', 'Expires']].values.tolist(), redirected, turn_in_here
     
-    def get_data_distribution(self, fid:str|None) -> list[list]:
+    def get_data_distribution(self, fid:str|None) -> tuple[list[list], list[int]]:
         if fid is None:
-            return [['No active missions']]
+            return [['No active missions']], []
         missions = self.get_active_missions(fid)
         df = pd.DataFrame(missions).T
         if df.empty:
-            return [['No active missions']]
+            return [['No active missions']], []
         df = df[df['Redirected'] == False]
         if df.empty:
-            return [['No incomplete missions']]
+            return [['No incomplete missions']], []
         distribution = df[['Faction', 'KillCount']].groupby('Faction').sum().reset_index()
         distribution = distribution.sort_values(by='KillCount', ascending=True).reset_index(drop=True)
         distribution.index += 1
         distribution['Difference'] = distribution['KillCount'].max() - distribution['KillCount']
         distribution['LowestReward'] = distribution['Faction'].apply(lambda x: f'{df[df["Faction"] == x]["Reward"].min():,}')
-        return distribution.values.tolist()
+        current_system, _ = self.get_cmdr_current_location(fid)
+        factions_in_system = df[df['System'] == current_system]['Faction'].unique().tolist()
+        in_system = [i for i, faction in enumerate(distribution['Faction']) if faction in factions_in_system]
+        return distribution.values.tolist(), in_system
 
     def get_data_mission_stats(self, fid:str|None) -> tuple[list[list], list[list]]:
         if fid is None:
@@ -555,6 +558,7 @@ class MissionModel:
             'KillRemaining': kill_count - completed_kills,
             'TotalKillCount': total_kill_count,
             'KillRatio': f"{total_kill_count / kill_count:.2f}",
+            'NumStations': df['Station'].nunique(),
         }
         stats_rewards = {
             'TotalReward': f"{total_reward:,}",
