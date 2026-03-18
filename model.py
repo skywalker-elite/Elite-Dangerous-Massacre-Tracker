@@ -483,7 +483,7 @@ class MissionModel:
     def generate_info_active_missions(self, fid, now):
         missions = self.get_active_missions(fid)
         info = {}
-        for missionID, mission in missions.items():
+        for missionID, mission in sorted(missions.items(), key=lambda x: x[0], reverse=True):
             info[missionID] = {
                 'TargetFaction': mission.get('TargetFaction', None),
                 'DestinationSystem': mission.get('DestinationSystem', None),
