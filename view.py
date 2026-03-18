@@ -158,6 +158,9 @@ class MissionView:
         self.bottom_bar = ttk.Frame(self.tab_missions)
         self.bottom_bar.grid(row=1, column=0, sticky='ew')
 
+        self.label_cmdr_location = ttk.Label(self.bottom_bar, text='CMDR Location: Unknown')
+        self.label_cmdr_location.pack(side='left', padx=5, pady=5)
+        
         self.dropdown_cmdr_var = tk.StringVar()
         self.dropdown_cmdr = ttk.Combobox(self.bottom_bar, textvariable=self.dropdown_cmdr_var, state='readonly')
         self.dropdown_cmdr.pack(side='right', padx=5, pady=5)
@@ -453,6 +456,9 @@ class MissionView:
     def update_time(self, time:str):
         self.clock_utc.configure(text=time)
 
+    def update_cmdr_location(self, location:str):
+        self.label_cmdr_location.configure(text=f'CMDR Location: {location}')
+
     def show_message_box_info(self, title:str, message:str):
         show_message_box_info(self.root, title, message)
 
@@ -580,6 +586,7 @@ if __name__ == '__main__':
     view.update_table_mission_stats([('TotalMissions', 20), ('WingMissions', 20), ('ActiveMissions', 0), ('KillCount', 478), ('KillRemaining', 0), ('TotalKillCount', 1213), ('KillRatio', '2.54'), ('NumStations', 3)])
     view.update_table_mission_stats_rewards([('TotalReward', '585,233,562'), ('TotalSharableReward', '585,233,562'), ('CurrentReward', '585,233,562'), ('CurrentSharableReward', '585,233,562'), ('AverageReward', '29,261,678'), ('AverageSharableReward', '29,261,678')])
     view.update_table_active_journals([['F11601975', 'CmdrTest', 'C:\\Path\\To\\Journal.20240615T123456.01.log'], ['F11601976', 'CmdrExample', 'C:\\Path\\To\\Journal.20240615T123457.01.log']])
+    view.update_cmdr_location('Puneith, Wheelock Port')
     view.dropdown_cmdr['values'] = ['Skywalkerctu', 'SKYWALKER THERESA', 'SKYWALKER SAGARMATHA', 'Skywalker Behemoth', 'SKYWALKERKUNIS', 'SKYWALKER MCDOWELL', 'SKYWALKER SOJOURNER', 'SKYWALKER TOULOUSE', 'SKYWALKER MONTENEGRO', 'SKYWALKER TRIPOLI']
     view.dropdown_cmdr.current(0)
     root.mainloop()
