@@ -529,6 +529,7 @@ class MissionModel:
         distribution = distribution.sort_values(by='KillCount', ascending=True).reset_index(drop=True)
         distribution.index += 1
         distribution['Difference'] = distribution['KillCount'].max() - distribution['KillCount']
+        distribution['LowestReward'] = distribution['Faction'].apply(lambda x: f'{df[df["Faction"] == x]["Reward"].min():,}')
         return distribution.values.tolist()
 
     def get_data_mission_stats(self, fid:str|None) -> tuple[list[list], list[list]]:
