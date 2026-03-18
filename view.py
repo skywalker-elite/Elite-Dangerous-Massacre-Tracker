@@ -434,7 +434,7 @@ class MissionView:
     def update_table_faction_distribution(self, data, rows_to_highlight:list[int]|None=None):
         highlight_rows = {}
         if rows_to_highlight:
-            highlight_rows = {'#0a84ff': rows_to_highlight}
+            highlight_rows['#0a84ff'] = rows_to_highlight
         self.update_table(self.sheet_faction_distribution, data, highlight_rows)
 
     def update_table_mission_stats(self, data, rows_to_highlight:list[int]|None=None):
