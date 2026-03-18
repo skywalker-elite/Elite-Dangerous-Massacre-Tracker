@@ -9,7 +9,7 @@ from humanize import naturaltime, naturaldelta
 from random import random
 import inspect
 from utility import getHammerCountdown, getResourcePath, getJournalPath
-# from config import 
+from config import MISSION_CUTOFF
 
 class JournalReader:
     @classmethod
@@ -339,7 +339,7 @@ class MissionModel:
             print('Missions Accepted:')
             print(*missions_accepted[:10], sep='\n')
         for mission in missions_accepted:
-            if mission['Name'].startswith('Mission_Massacre'):
+            if mission['Name'].startswith('Mission_Massacre') and datetime.strptime(mission['timestamp'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc) > datetime.now(timezone.utc) - timedelta(days=MISSION_CUTOFF):
                 self.initialize_mission_data(mission['FID'])
                 system, station = self.get_cmdr_location(mission['FID'], datetime.strptime(mission['timestamp'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc))
                 self.data_missions[mission['FID']]['Missions'][mission['MissionID']] = {
@@ -360,54 +360,58 @@ class MissionModel:
             print('Missions Redirected:')
             print(*missions_redirected[:10], sep='\n')
         for mission in missions_redirected:
-            self.initialize_mission_data(mission['FID'])
-            if mission['MissionID'] in self.data_missions[mission['FID']]['Missions'].keys():
-                self.data_missions[mission['FID']]['Missions'][mission['MissionID']]['Redirected'] = True
+            if datetime.strptime(mission['timestamp'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc) > datetime.now(timezone.utc) - timedelta(days=MISSION_CUTOFF):
+                self.initialize_mission_data(mission['FID'])
+                if mission['MissionID'] in self.data_missions[mission['FID']]['Missions'].keys():
+                    self.data_missions[mission['FID']]['Missions'][mission['MissionID']]['Redirected'] = True
 
     def process_missions_completed(self, missions_completed):
         if __name__ == '__main__':
             print('Missions Completed:')
             print(*missions_completed[:10], sep='\n')
         for mission in missions_completed:
-            fid = mission['FID']
-            self.initialize_mission_data(fid)
-            missionID = mission['MissionID']
-            if fid in self.data_missions.keys() and 'Missions' in self.data_missions[fid].keys():
-                self.data_missions[fid]['Missions'].pop(mission['MissionID'], None)
-                if missionID in self.data_missions[fid]['Active']:
-                    self.data_missions[fid]['Active'].remove(mission['MissionID'])
-                if missionID in self.data_missions[fid]['Complete']:
-                    self.data_missions[fid]['Complete'].remove(mission['MissionID'])
+            if datetime.strptime(mission['timestamp'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc) > datetime.now(timezone.utc) - timedelta(days=MISSION_CUTOFF):
+                fid = mission['FID']
+                self.initialize_mission_data(fid)
+                missionID = mission['MissionID']
+                if fid in self.data_missions.keys() and 'Missions' in self.data_missions[fid].keys():
+                    self.data_missions[fid]['Missions'].pop(mission['MissionID'], None)
+                    if missionID in self.data_missions[fid]['Active']:
+                        self.data_missions[fid]['Active'].remove(mission['MissionID'])
+                    if missionID in self.data_missions[fid]['Complete']:
+                        self.data_missions[fid]['Complete'].remove(mission['MissionID'])
 
     def process_missions_failed(self, missions_failed):
         if __name__ == '__main__':
             print('Missions Failed:')
             print(*missions_failed[:10], sep='\n')
         for mission in missions_failed:
-            fid = mission['FID']
-            self.initialize_mission_data(fid)
-            missionID = mission['MissionID']
-            if fid in self.data_missions.keys() and 'Missions' in self.data_missions[fid].keys():
-                self.data_missions[fid]['Missions'].pop(mission['MissionID'], None)
-                if missionID in self.data_missions[fid]['Active']:
-                    self.data_missions[fid]['Active'].remove(mission['MissionID'])
-                if missionID in self.data_missions[fid]['Complete']:
-                    self.data_missions[fid]['Complete'].remove(mission['MissionID'])
+            if datetime.strptime(mission['timestamp'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc) > datetime.now(timezone.utc) - timedelta(days=MISSION_CUTOFF):
+                fid = mission['FID']
+                self.initialize_mission_data(fid)
+                missionID = mission['MissionID']
+                if fid in self.data_missions.keys() and 'Missions' in self.data_missions[fid].keys():
+                    self.data_missions[fid]['Missions'].pop(mission['MissionID'], None)
+                    if missionID in self.data_missions[fid]['Active']:
+                        self.data_missions[fid]['Active'].remove(mission['MissionID'])
+                    if missionID in self.data_missions[fid]['Complete']:
+                        self.data_missions[fid]['Complete'].remove(mission['MissionID'])
 
     def process_missions_abandoned(self, missions_abandoned):
         if __name__ == '__main__':
             print('Missions Abandoned:')
             print(*missions_abandoned[:10], sep='\n')
         for mission in missions_abandoned:
-            fid = mission['FID']
-            self.initialize_mission_data(fid)
-            missionID = mission['MissionID']
-            if fid in self.data_missions.keys() and 'Missions' in self.data_missions[fid].keys():
-                self.data_missions[fid]['Missions'].pop(mission['MissionID'], None)
-                if missionID in self.data_missions[fid]['Active']:
-                    self.data_missions[fid]['Active'].remove(mission['MissionID'])
-                if missionID in self.data_missions[fid]['Complete']:
-                    self.data_missions[fid]['Complete'].remove(mission['MissionID'])
+            if datetime.strptime(mission['timestamp'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc) > datetime.now(timezone.utc) - timedelta(days=MISSION_CUTOFF):
+                fid = mission['FID']
+                self.initialize_mission_data(fid)
+                missionID = mission['MissionID']
+                if fid in self.data_missions.keys() and 'Missions' in self.data_missions[fid].keys():
+                    self.data_missions[fid]['Missions'].pop(mission['MissionID'], None)
+                    if missionID in self.data_missions[fid]['Active']:
+                        self.data_missions[fid]['Active'].remove(mission['MissionID'])
+                    if missionID in self.data_missions[fid]['Complete']:
+                        self.data_missions[fid]['Complete'].remove(mission['MissionID'])
 
     def update_data_missions(self, now):
         missions = self.data_missions.copy()
@@ -479,7 +483,7 @@ class MissionModel:
     def generate_info_active_missions(self, fid, now):
         missions = self.get_active_missions(fid)
         info = {}
-        for missionID, mission in missions.items():
+        for missionID, mission in sorted(missions.items(), key=lambda x: x[0], reverse=True):
             info[missionID] = {
                 'TargetFaction': mission.get('TargetFaction', None),
                 'DestinationSystem': mission.get('DestinationSystem', None),
@@ -511,29 +515,33 @@ class MissionModel:
         df['Wing'] = df['Wing'].apply(lambda x: 'Yes' if x else 'No')
         return df[['TargetFaction', 'DestinationSystem', 'System', 'Station', 'Faction', 'Wing', 'KillCount', 'Reward', 'Expires']].values.tolist(), redirected, turn_in_here
     
-    def get_data_distribution(self, fid:str|None) -> list[list]:
+    def get_data_distribution(self, fid:str|None) -> tuple[list[list], list[int]]:
         if fid is None:
-            return [['No active missions']]
+            return [['No active missions']], []
         missions = self.get_active_missions(fid)
         df = pd.DataFrame(missions).T
         if df.empty:
-            return [['No active missions']]
+            return [['No active missions']], []
         df = df[df['Redirected'] == False]
         if df.empty:
-            return [['No incomplete missions']]
+            return [['No incomplete missions']], []
         distribution = df[['Faction', 'KillCount']].groupby('Faction').sum().reset_index()
         distribution = distribution.sort_values(by='KillCount', ascending=True).reset_index(drop=True)
         distribution.index += 1
         distribution['Difference'] = distribution['KillCount'].max() - distribution['KillCount']
-        return distribution.values.tolist()
+        distribution['LowestReward'] = distribution['Faction'].apply(lambda x: f'{df[df["Faction"] == x]["Reward"].min():,}')
+        current_system, _ = self.get_cmdr_current_location(fid)
+        factions_in_system = df[df['System'] == current_system]['Faction'].unique().tolist()
+        in_system = [i for i, faction in enumerate(distribution['Faction']) if faction in factions_in_system]
+        return distribution.values.tolist(), in_system
 
-    def get_data_mission_stats(self, fid:str|None) -> list[list]:
+    def get_data_mission_stats(self, fid:str|None) -> tuple[list[list], list[list]]:
         if fid is None:
-            return []
+            return [], []
         missions = self.get_active_missions(fid)
         df = pd.DataFrame(missions).T
         if df.empty:
-            return [['No active missions']]
+            return [['No active missions']], [['No active missions']]
         df_redirected = df[df['Redirected'] == True]
         completed_kills = df_redirected[['Faction', 'KillCount']].groupby('Faction').sum().max()['KillCount'] if not df_redirected.empty else 0
         kill_count = df[['Faction', 'KillCount']].groupby('Faction').sum().max()['KillCount']
@@ -550,13 +558,17 @@ class MissionModel:
             'KillRemaining': kill_count - completed_kills,
             'TotalKillCount': total_kill_count,
             'KillRatio': f"{total_kill_count / kill_count:.2f}",
+            'NumStations': df['Station'].nunique(),
+        }
+        stats_rewards = {
             'TotalReward': f"{total_reward:,}",
             'TotalSharableReward': f"{sharable_reward:,}",
             'CurrentReward': f"{current_reward:,}",
             'CurrentSharableReward': f"{current_sharable_reward:,}",
             'AverageReward': f"{total_reward / df.shape[0]:,.0f}",
+            'AverageSharableReward': f"{sharable_reward / df[df['Wing'] == True].shape[0]:,.0f}" if df[df['Wing'] == True].shape[0] > 0 else 0,
         }
-        return list(stats.items())
+        return list(stats.items()), list(stats_rewards.items())
 
     class ActiveJournalInfo(NamedTuple):
         fid: str
