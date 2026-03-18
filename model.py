@@ -562,6 +562,7 @@ class MissionModel:
             'CurrentReward': f"{current_reward:,}",
             'CurrentSharableReward': f"{current_sharable_reward:,}",
             'AverageReward': f"{total_reward / df.shape[0]:,.0f}",
+            'AverageSharableReward': f"{sharable_reward / df[df['Wing'] == True].shape[0]:,.0f}" if df[df['Wing'] == True].shape[0] > 0 else 0,
         }
         return list(stats.items()), list(stats_rewards.items())
 
