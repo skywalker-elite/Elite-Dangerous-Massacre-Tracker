@@ -482,8 +482,9 @@ class MissionModel:
     
     def generate_info_active_missions(self, fid, now):
         missions = self.get_active_missions(fid)
+        missions_sorted = sorted(missions.items(), key=lambda x: x[0], reverse=True)
         info = {}
-        for missionID, mission in sorted(missions.items(), key=lambda x: x[0], reverse=True):
+        for missionID, mission in missions_sorted:
             info[missionID] = {
                 'TargetFaction': mission.get('TargetFaction', None),
                 'DestinationSystem': mission.get('DestinationSystem', None),
@@ -495,11 +496,11 @@ class MissionModel:
                 'Reward': mission.get('Reward', None),
                 'Expires': mission.get('Expiry', None),
             }
-        redirected = [i for i, mission in enumerate(missions.values()) if mission.get('Redirected', False)]
+        redirected = [i for i, (_, mission) in enumerate(missions_sorted) if mission.get('Redirected', False)]
         docked_system, docked_station = self.get_cmdr_current_location(fid)
         if docked_system is None or docked_station is None:
             return info, redirected, []
-        at_location = [i for i, mission in enumerate(missions.values()) if mission['System'] == docked_system and mission['Station'] == docked_station]
+        at_location = [i for i, (_, mission) in enumerate(missions_sorted) if mission['System'] == docked_system and mission['Station'] == docked_station]
         turn_in_here = [i for i in redirected if i in at_location]
         return info, redirected, turn_in_here
 
