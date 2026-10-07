@@ -17,6 +17,8 @@ from os.path import join
 from pathlib import Path
 # from decos import rate_limited
 
+HTTP_SESSION = requests.Session()
+
 def getJournalPath() -> str:
     if sys.platform == 'win32':
         user_path = os.environ.get('USERPROFILE')
@@ -67,7 +69,7 @@ def isUpdateAvailable() -> bool:
 
 def getLatestVersion() -> str|None:
     try:
-        response = requests.get('https://api.github.com/repos/skywalker-elite/Elite-Dangerous-Massacre-Tracker/releases/latest')
+        response = HTTP_SESSION.get('https://api.github.com/repos/skywalker-elite/Elite-Dangerous-Massacre-Tracker/releases/latest')
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f'Error while checking update: {e}')
@@ -87,7 +89,7 @@ def getLatestPrereleaseVersion() -> str|None:
     and return the highest prerelease.
     """
     try:
-        resp = requests.get(
+        resp = HTTP_SESSION.get(
             'https://api.github.com/repos/skywalker-elite/Elite-Dangerous-Massacre-Tracker/releases'
         )
         resp.raise_for_status()
