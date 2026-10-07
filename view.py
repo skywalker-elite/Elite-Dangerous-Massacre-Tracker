@@ -9,6 +9,7 @@ from config import WINDOW_SIZE_TIMER, COMPACT_SHEET_AUTO_HEIGHT_PADDING, COMPACT
 class MissionView:
     def __init__(self, root: tk.Tk, window_size:str|None=None):
         self.root = root
+        self._column_resize_snapshots: dict[int, tuple[tuple[str, ...], ...]] = {}
 
         style = ttk.Style(self.root)
         # Removing the focus border around tabs
@@ -239,6 +240,20 @@ class MissionView:
         sheet.enable_bindings('single_select', 'drag_select', 'column_select', 'row_select', 'arrowkeys', 'copy', 'find', 'ctrl_click_select', 'right_click_popup_menu', 'rc_select')
         sheet.column_width_resize_enabled = False
         sheet.row_height_resize_enabled = False
+        self._debounce_sheet_resize(sheet)
+
+    def _debounce_sheet_resize(self, sheet:Sheet, delay_ms:int=100):
+        # tksheet redraws the whole grid on every single <Configure> event it receives,
+        # which fires repeatedly (uncoalesced) while the window is being dragged/resized.
+        # Rebind with a debounce so the (expensive) redraw only runs once resizing settles.
+        mt = sheet.MT
+        original_handler = mt.window_configured
+        after_id_holder: dict[str, str|None] = {'id': None}
+        def debounced(event=None):
+            if after_id_holder['id'] is not None:
+                mt.after_cancel(after_id_holder['id'])
+            after_id_holder['id'] = mt.after(delay_ms, lambda: original_handler(event))
+        mt.bind('<Configure>', debounced)
 
     def hide_sheet_scrollbars(self, sheet: Sheet):
         sheet.hide('x_scrollbar')
@@ -252,10 +267,12 @@ class MissionView:
         for sheet in [self.sheet_missions, self.sheet_faction_distribution, self.sheet_active_journals, self.sheet_mission_stats, self.sheet_mission_stats_rewards]:
             sheet.font(('Calibri', size_table, 'normal'))
             sheet.header_font(('Calibri', size_table, 'normal'))
-            sheet.set_all_column_widths()
+            self._column_resize_snapshots.pop(id(sheet), None)
+            self._resize_table_columns(sheet)
             if sheet in self.auto_width_sheets:
                 sheet.set_all_row_heights(redraw=False)
                 self.fit_sheet_to_content(sheet)
+            sheet.refresh()
         self.schedule_missions_summary_pane_fit()
 
         # 2) resize all Tk widgets via named‐fonts
@@ -282,16 +299,33 @@ class MissionView:
         self.root.option_add("*Menu*Font",    ("Calibri", size, "normal"))
 
     def update_table(self, table:Sheet, data, highlight_rows:dict[str, int]|None=None):
-        table.set_sheet_data(data, reset_col_positions=False)
+        table.set_sheet_data(data, reset_col_positions=False, redraw=False)
         table.dehighlight_all(redraw=False)
         if highlight_rows is not None:
             for color, rows in highlight_rows.items():
                 table.highlight_rows(rows, fg=color, redraw=False)
-        table.set_all_column_widths()
+        self._resize_table_columns(table)
         if table in self.auto_width_sheets:
             table.set_all_row_heights(redraw=False)
             self.fit_sheet_to_content(table)
             self.schedule_missions_summary_pane_fit()
+        table.refresh()
+
+    def _resize_table_columns(self, table:Sheet):
+        # Compare rendered text, not character counts: these tables use proportional fonts.
+        rows = table.get_sheet_data(get_displayed=True, get_header=True)
+        count = max((len(row) for row in rows), default=0)
+        snapshot = tuple(tuple(str(row[c]) if c < len(row) else '' for row in rows)
+                         for c in range(count))
+        key = id(table)
+        previous = self._column_resize_snapshots.get(key)
+        if previous is None or len(previous) != count:
+            table.set_all_column_widths(redraw=False)
+        else:
+            for column, text in enumerate(snapshot):
+                if text != previous[column]:
+                    table.column_width(column, width='text', redraw=False)
+        self._column_resize_snapshots[key] = snapshot
 
     def get_sheet_content_width(self, sheet: Sheet) -> int:
         width = sum(int(column_width) for column_width in sheet.get_column_widths())
