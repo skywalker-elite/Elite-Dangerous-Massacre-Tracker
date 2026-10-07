@@ -27,6 +27,8 @@ class JournalReader:
         self.journal_latest = {}
         self.journal_latest_unknown_fid = {}
         self._journal_pending = {}
+        # File progress is independent of account identity and displayed session status.
+        self._journal_cursors = {}
         self._load_games = []
         self._missions = []
         self._missions_accepted = []
@@ -55,69 +57,100 @@ class JournalReader:
                     print(f'{self.tracked_items[i]} was dropped')
 
     def read_journals(self):
-        latest_journal_info = {}
-        for key, value in zip(self.journal_latest.keys(), self.journal_latest.values()):
-            latest_journal_info[value['filename']] = {'fid': key, 'byte_pos': value['byte_pos'], 'is_active': value['is_active']}
         journals = []
         for journal_path in self.journal_paths:
-            files = listdir(journal_path)
+            try:
+                files = listdir(journal_path)
+            except OSError as e:
+                print(f'{journal_path} {e}')
+                continue
             r = r'^Journal\.\d{4}-\d{2}-\d{2}T\d{6}\.\d{2}\.log$'
             journal_files = sorted([i for i in files if re.fullmatch(r, i)], reverse=False)
-            assert len(journal_files) > 0, f'No journal files found in {journal_path}'
             journals += [path.join(journal_path, i) for i in journal_files]
-        journal_order = {journal: index for index, journal in enumerate(journals)}
+        directory_order = {path.normcase(path.abspath(directory)): index
+                           for index, directory in enumerate(self.journal_paths)}
+
+        def journal_order(filename):
+            # Directory enumeration can temporarily omit a known newer journal.
+            directory = path.normcase(path.abspath(path.dirname(filename)))
+            return directory_order.get(directory, -1), path.basename(filename)
+
         for journal in journals:
+            newer_latest = {fid: info for fid, info in self.journal_latest.items()
+                            if journal_order(info['filename']) > journal_order(journal)}
             if journal in self._journal_pending:
                 pending = self._journal_pending[journal]
                 # A delayed tail may reveal its FID only after a newer journal is active.
-                newer_latest = {fid: info for fid, info in self.journal_latest.items()
-                                if journal_order.get(info['filename'], -1) > journal_order[journal]}
                 self._read_journal(journal, pending['byte_pos'], pending['fid'], set(newer_latest))
-                self.journal_latest.update(newer_latest)
             elif journal not in self.journal_processed:
                 self._read_journal(journal)
-            elif journal in latest_journal_info.keys():
-                if latest_journal_info[journal]['is_active']:
-                    self._read_journal(journal, latest_journal_info[journal]['byte_pos'], latest_journal_info[journal]['fid'])
-            elif journal in self.journal_latest_unknown_fid.keys():
-                self._read_journal(journal, self.journal_latest_unknown_fid[journal]['byte_pos'])
+            elif journal in self._journal_cursors:
+                cursor = self._journal_cursors[journal]
+                try:
+                    has_updates = path.getsize(journal) > cursor['byte_pos']
+                except OSError as e:
+                    print(f'{journal} {e}')
+                    continue
+                if has_updates:
+                    self._read_journal(journal, cursor['byte_pos'], cursor['fid'])
+            # Older shared files may still grow without replacing a newer session's display.
+            self.journal_latest.update(newer_latest)
             # Once a newer journal identifies the same commander, the old tail is final.
             for pending_path, pending in list(self._journal_pending.items()):
                 latest = self.journal_latest.get(pending['fid'])
-                if latest is not None and journal_order.get(latest['filename'], -1) > journal_order.get(pending_path, -1):
+                if latest is not None and journal_order(latest['filename']) > journal_order(pending_path):
                     self._retire_pending_journal(pending_path)
     
     def _retire_pending_journal(self, journal_path:str):
         self._journal_pending.pop(journal_path, None)
+        self._journal_cursors.pop(journal_path, None)
         self.journal_latest_unknown_fid.pop(journal_path, None)
+        self.journal_processed.add(journal_path)
+
+    def _remember_journal_cursor(self, journal_path:str, byte_pos:int, fid:str|None):
+        self._journal_cursors[journal_path] = {'byte_pos': byte_pos, 'fid': fid}
+        for info in self.journal_latest.values():
+            if info['filename'] == journal_path:
+                info['byte_pos'] = byte_pos
+        if journal_path in self.journal_latest_unknown_fid:
+            self.journal_latest_unknown_fid[journal_path]['byte_pos'] = byte_pos
         self.journal_processed.add(journal_path)
 
     def _read_journal(self, journal_path:str, byte_pos:int=0, fid_last:str|None=None,
                       superseded_fids:set[str]|None=None):
         items = []
         incomplete = False
-        with open(journal_path, 'rb') as f:
-            f.seek(byte_pos)
-            while True:
-                byte_pos_new = f.tell()
-                line = f.readline()
-                if not line:
-                    break
-                if not line.endswith(b'\n'):
-                    incomplete = True
-                    break
-                try:
-                    items.append(json.loads(line.decode('utf-8')))
-                except json.decoder.JSONDecodeError as e: # skip malformed complete records
-                    print(f'{journal_path} {e}')
+        try:
+            with open(journal_path, 'rb') as f:
+                f.seek(byte_pos)
+                while True:
+                    byte_pos_new = f.tell()
+                    line = f.readline()
+                    if not line:
+                        break
+                    if not line.endswith(b'\n'):
+                        incomplete = True
+                        break
+                    try:
+                        item = json.loads(line.decode('utf-8'))
+                        if not isinstance(item, dict) or not isinstance(item.get('event'), str) or not item['event']:
+                            raise ValueError('Journal record must have an event name')
+                        if item['event'] == 'Commander' and (not isinstance(item.get('FID'), str) or not item['FID']):
+                            raise ValueError('Commander record must have an FID')
+                        if item['event'] == 'MissionAccepted' and type(item.get('MissionID')) is not int:
+                            raise ValueError('MissionAccepted record must have a MissionID')
+                        self._timestamp_key(item)
+                        items.append(item)
+                    except (UnicodeDecodeError, ValueError, KeyError) as e:
+                        # Skip damaged complete records; partial records wait for a newline.
+                        print(f'{journal_path} {e}')
+        except OSError as e:
+            print(f'{journal_path} {e}')
+            return
 
         if len(items) == 0:
             # Advance over malformed complete lines without changing known identity/status.
-            for info in self.journal_latest.values():
-                if info['filename'] == journal_path:
-                    info['byte_pos'] = byte_pos_new
-            if journal_path in self.journal_latest_unknown_fid:
-                self.journal_latest_unknown_fid[journal_path]['byte_pos'] = byte_pos_new
+            self._remember_journal_cursor(journal_path, byte_pos_new, fid_last)
             if incomplete:
                 self._journal_pending[journal_path] = {'byte_pos': byte_pos_new, 'fid': fid_last}
             else:
@@ -125,19 +158,22 @@ class JournalReader:
             return
         # An unknown-FID tail may reveal its identity only after its successor was read.
         # Retire it before parsing, so historical events cannot reach incremental consumers.
+        fids = [item['FID'] for item in items if item['event'] == 'Commander']
         if superseded_fids:
-            fids = [item['FID'] for item in items if item['event'] == 'Commander']
             pending_fid = fids[0] if fids and all(fid == fids[0] for fid in fids) else fid_last
             if pending_fid in superseded_fids:
                 self._retire_pending_journal(journal_path)
                 return
         parsed_fid, is_active = self._parse_items(items, fid_last)
-        if fid_last is None:
+        if fids and parsed_fid is None:
+            fid = None
+        elif fid_last is None:
             fid = parsed_fid
         elif parsed_fid is not None and parsed_fid != fid_last:
             fid = None
         else:
             fid = fid_last
+        self._remember_journal_cursor(journal_path, byte_pos_new, fid)
         if incomplete:
             self._journal_pending[journal_path] = {'byte_pos': byte_pos_new, 'fid': fid}
         else:
@@ -160,11 +196,12 @@ class JournalReader:
 
 
     def _parse_items(self, items:list, fid_last:str|None) -> tuple[str|None, bool]:
-        fid = fid_last
+        fid_parsed = None
         fid_temp = [i['FID'] for i in items if i['event'] =='Commander']
         if len(fid_temp) > 0:
             if all(i == fid_temp[0] for i in fid_temp):
-                fid = fid_temp[0]
+                fid_parsed = fid_temp[0]
+        fid = fid_parsed if fid_temp else fid_last
         for item in items:
             if item['event'] == 'LoadGame':
                 self._load_games.append(item)
@@ -197,7 +234,7 @@ class JournalReader:
                 self._fsd_jumps.append(item)
                 
         is_active = len(items) == 0 or items[-1]['event'] != 'Shutdown'
-        return fid, is_active
+        return fid_parsed, is_active
     
     @classmethod
     def _timestamp_key(cls, item) -> str:
@@ -254,6 +291,7 @@ class MissionModel:
         self.data_missions = {}
         self.missions_updated = {}
         self.cmdr_names = {}
+        self._load_game_times = {}
         self.cmdr_locations = {}
         self.missions = {}
         self.missions_accepted = {}
@@ -292,9 +330,12 @@ class MissionModel:
         self.journal_reader.update_items_count()
 
     def process_load_games(self, load_games, first_read:bool=True):
-        for load_game in load_games:
-            if not first_read or load_game['FID'] not in self.cmdr_names.keys():
-                self.cmdr_names[load_game['FID']] = load_game['Commander']
+        for load_game in sorted(load_games, key=lambda item: item['timestamp']):
+            fid = load_game['FID']
+            timestamp = datetime.strptime(load_game['timestamp'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)
+            if fid not in self._load_game_times or timestamp >= self._load_game_times[fid]:
+                self._load_game_times[fid] = timestamp
+                self.cmdr_names[fid] = load_game['Commander']
 
     def process_itinerary(self, docked, undocked, fsd_jumps, first_read:bool=True):
         df_events = pd.DataFrame(docked + undocked + fsd_jumps, columns=['timestamp', 'event', 'StationName', 'StarSystem', 'MarketID', 'FID'], )

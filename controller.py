@@ -3,7 +3,8 @@ import os
 import sys
 import threading
 import time
-from typing import Callable, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
+from queue import Empty, Queue
 import pyperclip
 import re
 from watchdog.observers import Observer
@@ -13,7 +14,7 @@ from webbrowser import open_new_tab
 from datetime import datetime, timezone, timedelta, date
 from os import makedirs, path, remove
 from shutil import copyfile
-from tkinter import Tk
+from tkinter import Tk, TclError
 import traceback
 import tomllib
 import pickle
@@ -47,6 +48,8 @@ class MissionController:
     def __init__(self, root: Tk, model: MissionModel):
         self.root = root
         self.model = model
+        self._ui_callbacks = Queue()
+        self.root.after(0, self._drain_ui_callbacks)
         self.tray_icon = None
         self.view = MissionView(root)
         self.active_fid: str | None = None
@@ -84,23 +87,43 @@ class MissionController:
         self.check_app_update()
         self.minimize_hint_sent = False
 
-        threading.Thread(target=self.save_cache, daemon=True).start()
+        self._start_cache_save_loop()
 
         # self.save_window_size_on_resize()
 
     def _schedule_journal_update(self):
+        self._queue_ui_callback(self._schedule_journal_update_on_ui)
+
+    def _schedule_journal_update_on_ui(self):
         # coalesce rapid events
         if getattr(self, '_journal_update_pending', False):
             return
         self._journal_update_pending = True
-        threading.Thread(target=self._perform_journal_update, daemon=True).start()
+        self.view.root.after(0, self._perform_journal_update)
+
+    def _queue_ui_callback(self, callback: Callable[..., Any], *args: Any, **kwargs: Any):
+        self._ui_callbacks.put((callback, args, kwargs))
+
+    def _drain_ui_callbacks(self):
+        while True:
+            try:
+                callback, args, kwargs = self._ui_callbacks.get_nowait()
+            except Empty:
+                break
+            try:
+                callback(*args, **kwargs)
+            except Exception:
+                print(f'Error running UI callback:\n{traceback.format_exc()}')
+        try:
+            self.root.after(50, self._drain_ui_callbacks)
+        except TclError:
+            pass
 
     def _perform_journal_update(self):
-        self.update_journals()
         self._journal_update_pending = False
-        self.view.root.after(0, 
-                             lambda: self.redraw_slow()
-                             )
+        self.update_journals()
+        self.view.update_table_active_journals(self.model.get_data_active_journals())
+        self.redraw_slow()
 
     def set_current_version(self):
         self.view.label_version.configure(text=getCurrentVersion())
@@ -312,23 +335,31 @@ class MissionController:
             return None
         
     def save_cache(self):
+        self._save_cache_async(schedule_next=False)
+
+    def _start_cache_save_loop(self):
+        self._save_cache_async(schedule_next=True)
+
+    def _schedule_cache_save(self):
+        self.view.root.after(SAVE_CACHE_INTERVAL, self._start_cache_save_loop)
+
+    def _save_cache_async(self, schedule_next: bool):
         cache_path = getCachePath(self.model.journal_reader.version, self.model.journal_reader.journal_paths)
         if cache_path is not None:
-            makedirs(path.dirname(cache_path), exist_ok=True)
-            try:
-                self._save_cache(cache_path)
-            except Exception as e:
-                self.view.root.after(0, self.view.show_message_box_warning, 'Error', f'Error while saving cache\n{traceback.format_exc()}')
-            else:
-                self.view.root.after(SAVE_CACHE_INTERVAL, lambda: threading.Thread(target=self.save_cache, daemon=True).start())
+            threading.Thread(target=self._save_cache, args=(cache_path, schedule_next), daemon=True).start()
         else:
-            self.view.root.after(0, self.view.show_message_box_warning, 'Warning', 'Cache path is not set, cannot save cache')
+            self._queue_ui_callback(self.view.show_message_box_warning, 'Warning', 'Cache path is not set, cannot save cache')
 
-    def _save_cache(self, cache_path:str):
-        if cache_path is not None:
+    def _save_cache(self, cache_path:str, schedule_next: bool=False):
+        try:
             makedirs(path.dirname(cache_path), exist_ok=True)
             with open(cache_path, 'wb') as f:
                 pickle.dump(self.model.journal_reader, f)
+        except Exception:
+            self._queue_ui_callback(self.view.show_message_box_warning, 'Error', f'Error while saving cache\n{traceback.format_exc()}')
+        finally:
+            if schedule_next:
+                self._queue_ui_callback(self._schedule_cache_save)
 
     def button_click_clear_cache(self):
         cache_path = getCachePath(self.model.journal_reader.version, self.model.journal_reader.journal_paths)
@@ -336,12 +367,12 @@ class MissionController:
             try:
                 remove(cache_path)
             except Exception as e:
-                self.view.show_message_box_warning('Error', f'Error while clearing cache\n{traceback.format_exc()}')
+                self._queue_ui_callback(self.view.show_message_box_warning, 'Error', f'Error while clearing cache\n{traceback.format_exc()}')
             else:
-                self.view.show_message_box_info('Success!', 'Cache cleared, EDMT will reload all journals now')
+                self._queue_ui_callback(self.view.show_message_box_info, 'Success!', 'Cache cleared, EDMT will reload all journals now')
                 self.reload()
         else:
-            self.view.show_message_box_info('Info', 'No cache file found')
+            self._queue_ui_callback(self.view.show_message_box_info, 'Info', 'No cache file found')
 
     def reload(self):
         progress_win, progress_bar = self.view.show_indeterminate_progress_bar('Reloading', 'Reloading all journals, this may take a while depending on the size of your journals')
