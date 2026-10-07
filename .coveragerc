@@ -1,0 +1,14 @@
+[run]
+branch = True
+source =
+    config
+    controller
+    main
+    model
+    popups
+    utility
+    view
+
+[report]
+show_missing = True
+skip_empty = True
