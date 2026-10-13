@@ -17,6 +17,8 @@ from os.path import join
 from pathlib import Path
 # from decos import rate_limited
 
+HTTP_SESSION = requests.Session()
+
 def getJournalPath() -> str:
     if sys.platform == 'win32':
         user_path = os.environ.get('USERPROFILE')
@@ -67,12 +69,18 @@ def isUpdateAvailable() -> bool:
 
 def getLatestVersion() -> str|None:
     try:
-        response = requests.get('https://api.github.com/repos/skywalker-elite/Elite-Dangerous-Massacre-Tracker/releases/latest')
+        response = HTTP_SESSION.get('https://api.github.com/repos/skywalker-elite/Elite-Dangerous-Massacre-Tracker/releases/latest')
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f'Error while checking update: {e}')
         return None
-    latest_version = response.json()['name'].split()[1]
+    latest_version = response.json().get('tag_name')
+    if not isinstance(latest_version, str):
+        return None
+    try:
+        version.parse(latest_version)
+    except version.InvalidVersion:
+        return None
     return latest_version
 
 def isOnPrerelease() -> bool:
@@ -87,7 +95,7 @@ def getLatestPrereleaseVersion() -> str|None:
     and return the highest prerelease.
     """
     try:
-        resp = requests.get(
+        resp = HTTP_SESSION.get(
             'https://api.github.com/repos/skywalker-elite/Elite-Dangerous-Massacre-Tracker/releases'
         )
         resp.raise_for_status()
@@ -104,12 +112,12 @@ def getLatestPrereleaseVersion() -> str|None:
     pre_versions = []
     for rel in resp.json():
         if rel.get('prerelease'):
-            name = rel.get('name', '')
-            tag = name.split()[1] if ' ' in name else name
-            clean = tag
+            tag = rel.get('tag_name')
+            if not isinstance(tag, str):
+                continue
             try:
-                parsed = version.parse(clean)
-            except Exception:
+                parsed = version.parse(tag)
+            except version.InvalidVersion:
                 continue
             if parsed.is_prerelease and parsed.major == target_major and parsed.minor == target_minor:
                 pre_versions.append(tag)

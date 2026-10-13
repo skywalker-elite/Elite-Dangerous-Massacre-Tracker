@@ -1,5 +1,5 @@
 
-__pycache__/*
+__pycache__/
 build
 build/*
 dist
@@ -9,3 +9,11 @@ build_local.spec
 fake_journal_test.py
 fake_journals
 installer/setup_local.iss
+.venv/
+.cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+test-results/
+coverage.xml
